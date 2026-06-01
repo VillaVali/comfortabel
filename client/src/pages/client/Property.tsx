@@ -129,7 +129,7 @@ export default function ClientProperty() {
                 Inspectie: {new Date(latestInspection.inspectionDate).toLocaleDateString("nl-NL")}
               </span>
             )}
-            {features.pdfRapport && (
+            {features.jaarlijksRapport && (
               <button
                 onClick={downloadReport}
                 className="flex items-center gap-1.5 text-xs text-[#1E3A5F] border border-[#1E3A5F]/20 px-3 py-1.5 rounded-lg hover:bg-[#1E3A5F]/5 transition-colors"
@@ -140,7 +140,7 @@ export default function ClientProperty() {
             )}
           </div>
         </div>
-        {features.woningScore ? (
+        {features.comfortabelScore ? (
           <WoningScore
             grade={latestInspection?.woningGrade as any}
             totalScore={latestInspection?.totalScore}
@@ -157,7 +157,7 @@ export default function ClientProperty() {
             </a>
           </div>
         )}
-        {features.woningScore && latestInspection && latestInspection.status === "afgerond" && (
+        {features.comfortabelScore && latestInspection && latestInspection.status === "afgerond" && (
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <ScoreBar score={latestInspection.scoreInstallaties} label="Installaties" />
             <ScoreBar score={latestInspection.scoreBouwkundig} label="Bouwkundig" />
@@ -200,34 +200,254 @@ export default function ClientProperty() {
       {/* Tab content */}
       {activeTab === "paspoort" && (
         <div className="space-y-4">
-          {/* Property info */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-800 mb-4">Woninggegevens</h3>
-            <div className="grid grid-cols-2 gap-3 text-sm">
+
+          {/* ── Blok 1: Basisidentiteit (altijd zichtbaar) ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Home className="w-4 h-4 text-slate-400" />
+              <h3 className="font-semibold text-slate-800 text-sm">Basisidentiteit</h3>
+            </div>
+            <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
               {[
                 ["Adres", `${property.street} ${property.houseNumber}`],
                 ["Postcode & Stad", `${property.postalCode} ${property.city}`],
-                ["Type woning", property.propertyType],
+                ["Woningtype", property.propertyType],
                 ["Bouwjaar", property.buildYear],
                 ["Oppervlakte", property.surfaceM2 ? `${property.surfaceM2} m²` : null],
                 ["Bewoners", property.residents],
                 ["Energielabel", property.energyLabel],
-                ["Abonnement", property.subscriptionType],
-              ].map(([label, value]) =>
-                value ? (
-                  <div key={label as string}>
-                    <p className="text-xs text-slate-400 mb-0.5">{label}</p>
-                    <p className="font-medium text-slate-800 capitalize">{String(value)}</p>
-                  </div>
-                ) : null
+                ["Eigendomsvorm", property.ownershipType ? ({
+                  volle_eigendom: "Volle eigendom",
+                  erfpacht: "Erfpacht",
+                  appartementsrecht: "Appartementsrecht",
+                  opstalrecht: "Opstalrecht",
+                  onbekend: "Onbekend",
+                } as Record<string,string>)[property.ownershipType] : null],
+                ["Kadastrale aanduiding", property.kadastraleAanduiding],
+                ["Wijk", property.wijk],
+                ["BAG-gebruiksfunctie", property.bestemmingCategory],
+              ].filter(([, v]) => v != null && v !== "").map(([label, value]) => (
+                <div key={label as string}>
+                  <p className="text-xs text-slate-400 mb-0.5">{label}</p>
+                  <p className="font-medium text-slate-800 capitalize">{String(value)}</p>
+                </div>
+              ))}
+              {property.isMonument && (
+                <div className="col-span-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                    ⚠️ Beschermd monument
+                  </span>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Inspection history */}
+          {/* ── Blok 2: Waarde & Financieel (Digital+) ── */}
+          {features.paspoortUitgebreid ? (
+            (property.wozValue || property.purchasePrice || property.vveContribution || property.mortgageProvider) ? (
+              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                  <span className="text-slate-400 text-sm">€</span>
+                  <h3 className="font-semibold text-slate-800 text-sm">Waarde & Financieel</h3>
+                </div>
+                <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                  {[
+                    ["WOZ-waarde", property.wozValue ? `€${property.wozValue.toLocaleString("nl-NL")}${property.wozYear ? ` (${property.wozYear})` : ""}` : null],
+                    ["Koopsom", property.purchasePrice ? `€${property.purchasePrice.toLocaleString("nl-NL")}${property.purchaseYear ? ` (${property.purchaseYear})` : ""}` : null],
+                    ["VvE-bijdrage", property.vveContribution ? `€${property.vveContribution}/mnd` : null],
+                    ["Hypotheekverstrekker", property.mortgageProvider],
+                    ["Erfpachtcanon", property.erfpachtCanon ? `€${property.erfpachtCanon}/jr` : null],
+                    ["Opstalverzekering", property.insuranceExpiry ? `Vervalt ${new Date(property.insuranceExpiry).toLocaleDateString("nl-NL")}` : null],
+                  ].filter(([, v]) => v != null && v !== "").map(([label, value]) => (
+                    <div key={label as string}>
+                      <p className="text-xs text-slate-400 mb-0.5">{label}</p>
+                      <p className="font-medium text-slate-800">{String(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null
+          ) : (
+            <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-5 flex items-center gap-4">
+              <div className="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Lock className="w-4 h-4 text-slate-300" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-slate-700">Waarde & Financieel</p>
+                <p className="text-xs text-slate-400">Beschikbaar vanaf <strong>Digital</strong></p>
+              </div>
+              <a href="/abonnementen" className="text-xs text-[#1E3A5F] font-semibold hover:underline flex items-center gap-1">
+                Upgrade <ArrowUpRight className="w-3 h-3" />
+              </a>
+            </div>
+          )}
+
+          {/* ── Blok 3: Juridisch & Omgeving (Digital+) ── */}
+          {features.paspoortUitgebreid && (property.monumentType || property.bestemmingUrl || property.hasErfpacht || property.hasBeslag || property.buurtCode) ? (
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-slate-400" />
+                <h3 className="font-semibold text-slate-800 text-sm">Juridisch & Omgeving</h3>
+              </div>
+              <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                {[
+                  ["Monumentstatus", property.monumentType && property.monumentType !== "geen" ? ({
+                    rijksmonument: "Rijksmonument",
+                    gemeentelijk: "Gemeentelijk monument",
+                  } as Record<string,string>)[property.monumentType] : null],
+                  ["CBS buurtcode", property.buurtCode],
+                ].filter(([, v]) => v != null && v !== "").map(([label, value]) => (
+                  <div key={label as string}>
+                    <p className="text-xs text-slate-400 mb-0.5">{label}</p>
+                    <p className="font-medium text-slate-800">{String(value)}</p>
+                  </div>
+                ))}
+                {property.bestemmingUrl && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-slate-400 mb-0.5">Omgevingsloket</p>
+                    <a href={property.bestemmingUrl} target="_blank" rel="noopener noreferrer"
+                      className="text-sm text-[#1E3A5F] font-medium hover:underline flex items-center gap-1">
+                      Bekijk bestemmingsplan <ChevronRight className="w-3 h-3" />
+                    </a>
+                  </div>
+                )}
+                <div className="col-span-2 flex flex-wrap gap-2 mt-1">
+                  {property.hasErfpacht && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Erfpacht</span>
+                  )}
+                  {property.hasBeslag && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">Beslag/hypotheekrecht</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── Blok 4: Technische Kenmerken (Basis+) ── */}
+          {features.paspoortUitgebreid && (property.foundationType || property.roofType || property.heatingSystem || property.glazingType || property.hasSolarPanels) ? (
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-slate-400" />
+                <h3 className="font-semibold text-slate-800 text-sm">Technische Kenmerken</h3>
+              </div>
+              <div className="p-5 space-y-4">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                  {[
+                    ["Fundering", property.foundationType],
+                    ["Dak", property.roofType ? `${property.roofType.replace("_", " ")}${property.roofMaterial ? ` (${property.roofMaterial})` : ""}` : null],
+                    ["Buitenmuur", property.wallType],
+                    ["Verwarming", property.heatingSystem ? `${property.heatingSystem.replace("_", " ")}${property.heatingYear ? ` (${property.heatingYear})` : ""}` : null],
+                    ["Warm water", property.hotWaterSystem],
+                    ["Beglazing", property.glazingType ? property.glazingType.replace("_", "+") : null],
+                  ].filter(([, v]) => v != null && v !== "" && v !== "onbekend").map(([label, value]) => (
+                    <div key={label as string}>
+                      <p className="text-xs text-slate-400 mb-0.5">{label}</p>
+                      <p className="font-medium text-slate-800 capitalize">{String(value)}</p>
+                    </div>
+                  ))}
+                </div>
+                {/* Isolatie */}
+                {(property.roofInsulation || property.wallInsulation || property.floorInsulation) && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-2">Isolatie</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Dak", property.roofInsulation, "Muur", property.wallInsulation, "Vloer", property.floorInsulation]
+                        .reduce<[string, string][]>((acc, _, i, arr) => i % 2 === 0 ? [...acc, [arr[i] as string, arr[i+1] as string]] : acc, [])
+                        .filter(([, v]) => v && v !== "onbekend")
+                        .map(([label, value]) => (
+                          <span key={label} className={`text-xs px-2.5 py-1 rounded-full border ${
+                            value === "aanwezig" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                            value === "deels" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                            "bg-red-50 text-red-700 border-red-200"
+                          }`}>{label}: {value}</span>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
+                {/* Installaties */}
+                <div className="flex flex-wrap gap-2">
+                  {property.hasSolarPanels && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
+                      ☀️ Zonnepanelen{property.solarPanelCount ? ` (${property.solarPanelCount}x)` : ""}
+                    </span>
+                  )}
+                  {property.hasEVCharger && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                      ⚡ Laadpaal
+                    </span>
+                  )}
+                  {property.hasGasConnection === false && (
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      ✅ Aardgasvrij
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── Blok 5: Verduurzaming (Digital+) ── */}
+          {features.paspoortUitgebreid && (property.targetEnergyLabel || property.gasVrijDoeljaar || property.sustainabilityMeasures) ? (
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                <span className="text-slate-400 text-sm">🌱</span>
+                <h3 className="font-semibold text-slate-800 text-sm">Verduurzaming</h3>
+              </div>
+              <div className="p-5 space-y-3 text-sm">
+                <div className="flex items-center gap-6">
+                  {property.energyLabel && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Huidig label</p>
+                      <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg font-bold text-white text-sm" style={{
+                        backgroundColor: { "A+++": "#00a651", "A++": "#00a651", "A+": "#00a651", "A": "#00a651", "B": "#50b848", "C": "#bed630", "D": "#ffd800", "E": "#f7941d", "F": "#f15a24", "G": "#ed1c24" }[property.energyLabel] ?? "#94a3b8"
+                      }}>{property.energyLabel}</span>
+                    </div>
+                  )}
+                  {property.targetEnergyLabel && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Streef-label</p>
+                      <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg font-bold text-white text-sm border-2 border-dashed border-slate-300" style={{
+                        backgroundColor: { "A+++": "#00a651", "A++": "#00a651", "A+": "#00a651", "A": "#00a651", "B": "#50b848", "C": "#bed630", "D": "#ffd800", "E": "#f7941d", "F": "#f15a24", "G": "#ed1c24" }[property.targetEnergyLabel] ?? "#94a3b8"
+                      }}>{property.targetEnergyLabel}</span>
+                    </div>
+                  )}
+                  {property.gasVrijDoeljaar && (
+                    <div>
+                      <p className="text-xs text-slate-400 mb-1">Aardgasvrij doeljaar</p>
+                      <p className="font-bold text-slate-800">{property.gasVrijDoeljaar}</p>
+                    </div>
+                  )}
+                </div>
+                {property.sustainabilityMeasures && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1.5">Genomen maatregelen</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {property.sustainabilityMeasures.split(",").map((m: string) => m.trim()).filter(Boolean).map((m: string) => (
+                        <span key={m} className="text-xs px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">{m}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {property.subsidiesApplied && (
+                  <div>
+                    <p className="text-xs text-slate-400 mb-1.5">Subsidies</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {property.subsidiesApplied.split(",").map((s: string) => s.trim()).filter(Boolean).map((s: string) => (
+                        <span key={s} className="text-xs px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {/* ── Inspectiehistorie ── */}
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800">Inspectiehistorie</h3>
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-slate-400" />
+              <h3 className="font-semibold text-slate-800 text-sm">Inspectiehistorie</h3>
             </div>
             {inspections.length === 0 ? (
               <div className="text-center py-10">
@@ -238,11 +458,9 @@ export default function ClientProperty() {
               <div className="divide-y divide-slate-50">
                 {inspections.map((insp) => (
                   <div key={insp.id} className="px-5 py-3.5 flex items-center gap-3">
-                    <div
-                      className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        insp.status === "afgerond" ? "bg-emerald-500" : "bg-amber-400"
-                      }`}
-                    />
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                      insp.status === "afgerond" ? "bg-emerald-500" : "bg-amber-400"
+                    }`} />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-slate-800 capitalize">{insp.type}</p>
                       <p className="text-xs text-slate-500">
@@ -252,13 +470,9 @@ export default function ClientProperty() {
                     {insp.woningGrade && (
                       <WoningScore grade={insp.woningGrade as any} size="sm" showLabel={false} />
                     )}
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        insp.status === "afgerond"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-amber-50 text-amber-700"
-                      }`}
-                    >
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      insp.status === "afgerond" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                    }`}>
                       {insp.status.replace("_", " ")}
                     </span>
                   </div>
@@ -271,10 +485,10 @@ export default function ClientProperty() {
 
       {activeTab === "onderhoud" && (
         <div className="space-y-3">
-          {!features.onderhoud && (
+          {!features.onderhoudsarchief && (
             <LockedFeature tier={tier} feature="Onderhoudsbeheer" />
           )}
-          {features.onderhoud && (
+          {features.onderhoudsarchief && (
             <div className="space-y-3">
               {openIssues.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 text-center py-14">
@@ -358,10 +572,10 @@ export default function ClientProperty() {
 
       {activeTab === "planning" && (
         <div>
-          {!features.planning && (
+          {!features.onderhoudsplanning && (
             <LockedFeature tier={tier} feature="Meerjarenplanning" />
           )}
-          {features.planning && (
+          {features.onderhoudsplanning && (
             <div>
               {planning.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 text-center py-14">
@@ -409,7 +623,7 @@ export default function ClientProperty() {
 
       {activeTab === "documenten" && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          {features.documenten ? (
+          {features.documentenBeperkt ? (
             <DocumentsPanel propertyId={propertyId} isAdmin={false} />
           ) : (
             <LockedFeature tier={tier} feature="Documentenmap" />

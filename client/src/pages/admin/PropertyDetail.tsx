@@ -6,26 +6,537 @@ import { trpc } from "../../lib/trpc";
 import { toast } from "sonner";
 import WoningScore, { ScoreBar } from "../../components/WoningScore";
 import {
-  ClipboardCheck,
-  Plus,
-  ArrowRight,
-  Home,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  X,
-  FileText,
-  CreditCard,
+  ClipboardCheck, Plus, ArrowRight, Home, AlertTriangle, CheckCircle,
+  Clock, X, FileText, CreditCard, Pencil, ChevronDown, ChevronUp,
 } from "lucide-react";
 import {
   SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS, SUBSCRIPTION_PRICES,
   SUBSCRIPTION_TIERS, type SubscriptionTier,
 } from "@shared/const";
 
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function Input({ value, onChange, type = "text", placeholder }: {
+  value: any;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20"
+    />
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function Select({ value, onChange, options }: {
+  value: any;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20"
+    >
+      <option value="">— Selecteer —</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
+}
+
+function Toggle({ checked, onChange, label }: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+}) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <div
+        onClick={() => onChange(!checked)}
+        className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${checked ? "bg-[#1E3A5F]" : "bg-slate-200"}`}
+      >
+        <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0"}`} />
+      </div>
+      <span className="text-sm text-slate-700">{label}</span>
+    </label>
+  );
+}
+
+// ─── Paspoort Edit Modal ───────────────────────────────────────────────────────
+
+type EditForm = Record<string, unknown> & { id: number };
+
+const INSULATION_OPTIONS = [
+  { value: "aanwezig", label: "Aanwezig" },
+  { value: "deels", label: "Deels aanwezig" },
+  { value: "afwezig", label: "Afwezig" },
+  { value: "onbekend", label: "Onbekend" },
+];
+
+const ENERGY_LABEL_OPTIONS = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"].map(
+  (v) => ({ value: v, label: v })
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyProperty = Record<string, any>;
+
+function PaspoortEditModal({
+  property,
+  onClose,
+  onSave,
+  isSaving,
+}: {
+  property: AnyProperty;
+  onClose: () => void;
+  onSave: (data: AnyProperty) => void;
+  isSaving: boolean;
+}) {
+  const [activeTab, setActiveTab] = useState(0);
+  const [form, setForm] = useState<EditForm>({ ...(property as unknown as EditForm) });
+
+  const set = (key: string, value: unknown) =>
+    setForm((prev: EditForm) => ({ ...prev, [key]: value }));
+
+  const tabs = [
+    "Basisidentiteit",
+    "Waarde & Financieel",
+    "Juridisch & Omgeving",
+    "Technische Kenmerken",
+    "Verduurzaming",
+  ];
+
+  const handleSave = () => {
+    const { id, ...data } = form;
+    onSave(data);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-5 border-b border-slate-100 flex-shrink-0">
+          <div>
+            <h2 className="text-base font-semibold text-slate-800">Woningpaspoort bewerken</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{property.street} {property.houseNumber}, {property.city}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-slate-100 flex-shrink-0 overflow-x-auto">
+          {tabs.map((tab, i) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(i)}
+              className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap transition-colors border-b-2 ${
+                activeTab === i
+                  ? "border-[#1E3A5F] text-[#1E3A5F]"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5">
+          {/* Tab 0: Basisidentiteit */}
+          {activeTab === 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Straat">
+                <Input value={form.street} onChange={(v) => set("street", v)} />
+              </Field>
+              <Field label="Huisnummer">
+                <Input value={form.houseNumber} onChange={(v) => set("houseNumber", v)} />
+              </Field>
+              <Field label="Postcode">
+                <Input value={form.postalCode} onChange={(v) => set("postalCode", v)} />
+              </Field>
+              <Field label="Stad">
+                <Input value={form.city} onChange={(v) => set("city", v)} />
+              </Field>
+              <Field label="Woningtype">
+                <Select
+                  value={form.propertyType}
+                  onChange={(v) => set("propertyType", v)}
+                  options={[
+                    { value: "tussenwoning", label: "Tussenwoning" },
+                    { value: "hoekwoning", label: "Hoekwoning" },
+                    { value: "vrijstaand", label: "Vrijstaand" },
+                    { value: "appartement", label: "Appartement" },
+                    { value: "bedrijfspand", label: "Bedrijfspand" },
+                    { value: "overig", label: "Overig" },
+                  ]}
+                />
+              </Field>
+              <Field label="Bouwjaar">
+                <Input type="number" value={form.buildYear} onChange={(v) => set("buildYear", Number(v) || undefined)} />
+              </Field>
+              <Field label="Oppervlakte (m²)">
+                <Input type="number" value={form.surfaceM2} onChange={(v) => set("surfaceM2", Number(v) || undefined)} />
+              </Field>
+              <Field label="Aantal bewoners">
+                <Input type="number" value={form.residents} onChange={(v) => set("residents", Number(v) || undefined)} />
+              </Field>
+              <Field label="Energielabel">
+                <Select value={form.energyLabel} onChange={(v) => set("energyLabel", v)} options={ENERGY_LABEL_OPTIONS} />
+              </Field>
+              <Field label="BAG-gebruiksfunctie">
+                <Input value={form.bestemmingCategory} onChange={(v) => set("bestemmingCategory", v)} placeholder="bijv. Wonen" />
+              </Field>
+              <div className="col-span-2">
+                <Field label="Notities">
+                  <textarea
+                    value={(form.notes as string) ?? ""}
+                    onChange={(e) => set("notes", e.target.value)}
+                    rows={3}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 resize-none"
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 1: Waarde & Financieel */}
+          {activeTab === 1 && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="WOZ-waarde (€)">
+                <Input type="number" value={form.wozValue} onChange={(v) => set("wozValue", Number(v) || undefined)} placeholder="bijv. 385000" />
+              </Field>
+              <Field label="WOZ peiljaar">
+                <Input type="number" value={form.wozYear} onChange={(v) => set("wozYear", Number(v) || undefined)} placeholder="bijv. 2024" />
+              </Field>
+              <Field label="Koopsom bij aankoop (€)">
+                <Input type="number" value={form.purchasePrice} onChange={(v) => set("purchasePrice", Number(v) || undefined)} placeholder="bijv. 320000" />
+              </Field>
+              <Field label="Aankoopjaar">
+                <Input type="number" value={form.purchaseYear} onChange={(v) => set("purchaseYear", Number(v) || undefined)} placeholder="bijv. 2018" />
+              </Field>
+              <Field label="VvE-bijdrage per maand (€)">
+                <Input type="number" value={form.vveContribution} onChange={(v) => set("vveContribution", Number(v) || undefined)} placeholder="bijv. 150" />
+              </Field>
+              <Field label="Hypotheekverstrekker">
+                <Input value={form.mortgageProvider} onChange={(v) => set("mortgageProvider", v)} placeholder="bijv. ABN AMRO" />
+              </Field>
+              <Field label="Erfpachtcanon per jaar (€)">
+                <Input type="number" value={form.erfpachtCanon} onChange={(v) => set("erfpachtCanon", Number(v) || undefined)} placeholder="bijv. 1200" />
+              </Field>
+              <Field label="Vervaldatum opstalverzekering">
+                <Input
+                  type="date"
+                  value={form.insuranceExpiry ? new Date(form.insuranceExpiry as string | number).toISOString().split("T")[0] : ""}
+                  onChange={(v) => set("insuranceExpiry", v ? new Date(v) : undefined)}
+                />
+              </Field>
+            </div>
+          )}
+
+          {/* Tab 2: Juridisch & Omgeving */}
+          {activeTab === 2 && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Eigendomsvorm">
+                <Select
+                  value={form.ownershipType}
+                  onChange={(v) => set("ownershipType", v)}
+                  options={[
+                    { value: "volle_eigendom", label: "Volle eigendom" },
+                    { value: "erfpacht", label: "Erfpacht" },
+                    { value: "appartementsrecht", label: "Appartementsrecht" },
+                    { value: "opstalrecht", label: "Opstalrecht" },
+                    { value: "onbekend", label: "Onbekend" },
+                  ]}
+                />
+              </Field>
+              <Field label="Kadastrale aanduiding">
+                <Input value={form.kadastraleAanduiding} onChange={(v) => set("kadastraleAanduiding", v)} placeholder="bijv. Amsterdam B 1234" />
+              </Field>
+              <Field label="Monumentstatus">
+                <Select
+                  value={form.monumentType}
+                  onChange={(v) => set("monumentType", v)}
+                  options={[
+                    { value: "geen", label: "Geen monument" },
+                    { value: "rijksmonument", label: "Rijksmonument" },
+                    { value: "gemeentelijk", label: "Gemeentelijk monument" },
+                  ]}
+                />
+              </Field>
+              <Field label="Bestemmingscategorie">
+                <Input value={form.bestemmingCategory} onChange={(v) => set("bestemmingCategory", v)} placeholder="bijv. Wonen" />
+              </Field>
+              <Field label="Wijk">
+                <Input value={form.wijk} onChange={(v) => set("wijk", v)} placeholder="bijv. Jordaan" />
+              </Field>
+              <Field label="CBS buurtcode">
+                <Input value={form.buurtCode} onChange={(v) => set("buurtCode", v)} placeholder="bijv. BU03630000" />
+              </Field>
+              <div className="col-span-2">
+                <Field label="Link naar Omgevingsloket">
+                  <Input value={form.bestemmingUrl} onChange={(v) => set("bestemmingUrl", v)} placeholder="https://omgevingsloket.nl/..." />
+                </Field>
+              </div>
+              <div className="col-span-2 space-y-3 pt-2">
+                <Toggle
+                  checked={!!form.hasErfpacht}
+                  onChange={(v) => set("hasErfpacht", v)}
+                  label="Erfpacht van toepassing"
+                />
+                <Toggle
+                  checked={!!form.hasBeslag}
+                  onChange={(v) => set("hasBeslag", v)}
+                  label="Beslag of hypotheekrecht geregistreerd"
+                />
+                <Toggle
+                  checked={!!form.isMonument}
+                  onChange={(v) => set("isMonument", v)}
+                  label="Beschermd monument"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Tab 3: Technische Kenmerken */}
+          {activeTab === 3 && (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Funderingstype">
+                  <Select
+                    value={form.foundationType}
+                    onChange={(v) => set("foundationType", v)}
+                    options={[
+                      { value: "paalfundering", label: "Paalfundering" },
+                      { value: "strookfundering", label: "Strookfundering" },
+                      { value: "plaatfundering", label: "Plaatfundering" },
+                      { value: "onbekend", label: "Onbekend" },
+                    ]}
+                  />
+                </Field>
+                <Field label="Daktype">
+                  <Select
+                    value={form.roofType}
+                    onChange={(v) => set("roofType", v)}
+                    options={[
+                      { value: "zadeldak", label: "Zadeldak" },
+                      { value: "plat_dak", label: "Plat dak" },
+                      { value: "mansardedak", label: "Mansardedak" },
+                      { value: "schilddak", label: "Schilddak" },
+                      { value: "lessenaarsdak", label: "Lessenaarsdak" },
+                      { value: "onbekend", label: "Onbekend" },
+                    ]}
+                  />
+                </Field>
+                <Field label="Dakbedekking">
+                  <Select
+                    value={form.roofMaterial}
+                    onChange={(v) => set("roofMaterial", v)}
+                    options={[
+                      { value: "dakpannen", label: "Dakpannen" },
+                      { value: "bitumen", label: "Bitumen" },
+                      { value: "zink", label: "Zink" },
+                      { value: "riet", label: "Riet" },
+                      { value: "leisteen", label: "Leisteen" },
+                      { value: "onbekend", label: "Onbekend" },
+                    ]}
+                  />
+                </Field>
+                <Field label="Buitenmuurtype">
+                  <Select
+                    value={form.wallType}
+                    onChange={(v) => set("wallType", v)}
+                    options={[
+                      { value: "spouwmuur", label: "Spouwmuur" },
+                      { value: "massief", label: "Massief" },
+                      { value: "houtskelet", label: "Houtskelet" },
+                      { value: "onbekend", label: "Onbekend" },
+                    ]}
+                  />
+                </Field>
+                <Field label="Verwarmingssysteem">
+                  <Select
+                    value={form.heatingSystem}
+                    onChange={(v) => set("heatingSystem", v)}
+                    options={[
+                      { value: "cv_ketel", label: "CV-ketel" },
+                      { value: "warmtepomp", label: "Warmtepomp" },
+                      { value: "stadsverwarming", label: "Stadsverwarming" },
+                      { value: "elektrisch", label: "Elektrisch" },
+                      { value: "geen", label: "Geen" },
+                      { value: "onbekend", label: "Onbekend" },
+                    ]}
+                  />
+                </Field>
+                <Field label="Bouwjaar verwarming">
+                  <Input type="number" value={form.heatingYear} onChange={(v) => set("heatingYear", Number(v) || undefined)} placeholder="bijv. 2015" />
+                </Field>
+                <Field label="Warm water installatie">
+                  <Select
+                    value={form.hotWaterSystem}
+                    onChange={(v) => set("hotWaterSystem", v)}
+                    options={[
+                      { value: "combiketel", label: "Combiketel" },
+                      { value: "boiler", label: "Boiler" },
+                      { value: "zonneboiler", label: "Zonneboiler" },
+                      { value: "warmtepomp", label: "Warmtepomp" },
+                      { value: "onbekend", label: "Onbekend" },
+                    ]}
+                  />
+                </Field>
+                <Field label="Beglazing">
+                  <Select
+                    value={form.glazingType}
+                    onChange={(v) => set("glazingType", v)}
+                    options={[
+                      { value: "enkel", label: "Enkel glas" },
+                      { value: "dubbel", label: "Dubbel glas" },
+                      { value: "hr_plus", label: "HR+" },
+                      { value: "hr_plus_plus", label: "HR++" },
+                      { value: "triple", label: "Triple glas" },
+                      { value: "gemengd", label: "Gemengd" },
+                      { value: "onbekend", label: "Onbekend" },
+                    ]}
+                  />
+                </Field>
+              </div>
+
+              {/* Isolatie */}
+              <div>
+                <p className="text-xs font-medium text-slate-500 mb-2">Isolatie</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <Field label="Dakisolatie">
+                    <Select value={form.roofInsulation as string} onChange={(v) => set("roofInsulation", v)} options={INSULATION_OPTIONS} />
+                  </Field>
+                  <Field label="Muurisolatie">
+                    <Select value={form.wallInsulation as string} onChange={(v) => set("wallInsulation", v)} options={INSULATION_OPTIONS} />
+                  </Field>
+                  <Field label="Vloerisolatie">
+                    <Select value={form.floorInsulation as string} onChange={(v) => set("floorInsulation", v)} options={INSULATION_OPTIONS} />
+                  </Field>
+                </div>
+              </div>
+
+              {/* Installaties toggles */}
+              <div>
+                <p className="text-xs font-medium text-slate-500 mb-2">Installaties</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <Toggle
+                    checked={!!form.hasSolarPanels}
+                    onChange={(v) => set("hasSolarPanels", v)}
+                    label="Zonnepanelen aanwezig"
+                  />
+                  <Toggle
+                    checked={!!form.hasEVCharger}
+                    onChange={(v) => set("hasEVCharger", v)}
+                    label="Laadpaal aanwezig"
+                  />
+                  <Toggle
+                    checked={form.hasGasConnection !== false}
+                    onChange={(v) => set("hasGasConnection", v)}
+                    label="Aardgasaansluiting"
+                  />
+                </div>
+                {(form.hasSolarPanels as boolean) && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <Field label="Aantal zonnepanelen">
+                      <Input type="number" value={form.solarPanelCount as number} onChange={(v) => set("solarPanelCount", Number(v) || undefined)} />
+                    </Field>
+                    <Field label="Installatiejaar">
+                      <Input type="number" value={form.solarPanelYear as number} onChange={(v) => set("solarPanelYear", Number(v) || undefined)} />
+                    </Field>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Tab 4: Verduurzaming */}
+          {activeTab === 4 && (
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Huidig energielabel">
+                <Select value={form.energyLabel as string} onChange={(v) => set("energyLabel", v)} options={ENERGY_LABEL_OPTIONS} />
+              </Field>
+              <Field label="Streef-energielabel">
+                <Select value={form.targetEnergyLabel as string} onChange={(v) => set("targetEnergyLabel", v)} options={ENERGY_LABEL_OPTIONS} />
+              </Field>
+              <Field label="Aardgasvrij doeljaar">
+                <Input type="number" value={form.gasVrijDoeljaar as number} onChange={(v) => set("gasVrijDoeljaar", Number(v) || undefined)} placeholder="bijv. 2030" />
+              </Field>
+              <div className="col-span-2">
+                <Field label="Genomen verduurzamingsmaatregelen (kommagescheiden)">
+                  <textarea
+                    value={(form.sustainabilityMeasures as string) ?? ""}
+                    onChange={(e) => set("sustainabilityMeasures", e.target.value)}
+                    rows={3}
+                    placeholder="bijv. Spouwmuurisolatie, HR++ glas, Zonnepanelen"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 resize-none"
+                  />
+                </Field>
+              </div>
+              <div className="col-span-2">
+                <Field label="Aangevraagde subsidies (kommagescheiden)">
+                  <textarea
+                    value={(form.subsidiesApplied as string) ?? ""}
+                    onChange={(e) => set("subsidiesApplied", e.target.value)}
+                    rows={2}
+                    placeholder="bijv. ISDE, SEEH, Salderingsregeling"
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 resize-none"
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 p-5 border-t border-slate-100 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            Annuleren
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="flex-1 py-2.5 bg-[#1E3A5F] text-white rounded-lg text-sm font-medium hover:bg-[#2a4f7a] disabled:opacity-60"
+          >
+            {isSaving ? "Opslaan..." : "Opslaan"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────────
+
 export default function AdminPropertyDetail() {
   const params = useParams<{ id: string }>();
   const propertyId = Number(params.id);
   const [showIssueModal, setShowIssueModal] = useState(false);
+  const [showPaspoortModal, setShowPaspoortModal] = useState(false);
   const [issueForm, setIssueForm] = useState({
     title: "",
     description: "",
@@ -35,7 +546,6 @@ export default function AdminPropertyDetail() {
   });
 
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier | "">("");
-  const utils = trpc.useUtils();
 
   const { data: property, refetch: refetchProperty } = trpc.properties.get.useQuery({ id: propertyId });
   const { data: inspections = [], refetch: refetchInspections } = trpc.inspections.listByProperty.useQuery({ propertyId });
@@ -43,8 +553,14 @@ export default function AdminPropertyDetail() {
   const { data: planning = [] } = trpc.maintenance.listPlanning.useQuery({ propertyId });
 
   const setTier = trpc.subscriptions.setTier.useMutation({
+    onSuccess: () => { toast.success("Abonnement bijgewerkt"); refetchProperty(); },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const updateProperty = trpc.properties.update.useMutation({
     onSuccess: () => {
-      toast.success("Abonnement bijgewerkt");
+      toast.success("Woningpaspoort opgeslagen");
+      setShowPaspoortModal(false);
       refetchProperty();
     },
     onError: (e) => toast.error(e.message),
@@ -97,33 +613,55 @@ export default function AdminPropertyDetail() {
     );
   }
 
+  const ownershipLabels: Record<string, string> = {
+    volle_eigendom: "Volle eigendom",
+    erfpacht: "Erfpacht",
+    appartementsrecht: "Appartementsrecht",
+    opstalrecht: "Opstalrecht",
+    onbekend: "Onbekend",
+  };
+
   return (
     <AdminLayout title={`${property.street} ${property.houseNumber}, ${property.city}`}>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column: property info + score */}
+        {/* Left column */}
         <div className="space-y-5">
-          {/* Property info */}
+          {/* Property info card */}
           <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                <Home className="w-5 h-5 text-slate-500" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
+                  <Home className="w-5 h-5 text-slate-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800 text-sm">
+                    {property.street} {property.houseNumber}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {property.postalCode} {property.city}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-slate-800 text-sm">
-                  {property.street} {property.houseNumber}
-                </p>
-                <p className="text-xs text-slate-500">
-                  {property.postalCode} {property.city}
-                </p>
-              </div>
+              <button
+                onClick={() => setShowPaspoortModal(true)}
+                className="flex items-center gap-1.5 text-xs text-[#1E3A5F] hover:bg-slate-50 px-2 py-1.5 rounded-lg border border-slate-200 font-medium"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Bewerken
+              </button>
             </div>
+
+            {/* Basic fields */}
             <div className="space-y-2 text-sm">
               {[
                 ["Type", property.propertyType],
                 ["Bouwjaar", property.buildYear],
-                ["Oppervlakte", property.surfaceM2 ? `${property.surfaceM2} m\u00b2` : null],
+                ["Oppervlakte", property.surfaceM2 ? `${property.surfaceM2} m²` : null],
                 ["Bewoners", property.residents],
                 ["Energielabel", property.energyLabel],
+                ["Eigendomsvorm", property.ownershipType ? ownershipLabels[property.ownershipType] : null],
+                ["Kadaster", property.kadastraleAanduiding],
+                ["Wijk", property.wijk],
               ].map(([label, value]) =>
                 value ? (
                   <div key={label as string} className="flex justify-between">
@@ -133,6 +671,48 @@ export default function AdminPropertyDetail() {
                 ) : null
               )}
             </div>
+
+            {/* Financial summary if available */}
+            {(property.wozValue || property.purchasePrice) && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2 text-sm">
+                {property.wozValue && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">WOZ-waarde {property.wozYear ? `(${property.wozYear})` : ""}</span>
+                    <span className="text-slate-800 font-medium">€{property.wozValue.toLocaleString("nl-NL")}</span>
+                  </div>
+                )}
+                {property.purchasePrice && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Koopsom {property.purchaseYear ? `(${property.purchaseYear})` : ""}</span>
+                    <span className="text-slate-800 font-medium">€{property.purchasePrice.toLocaleString("nl-NL")}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Technical summary if available */}
+            {(property.heatingSystem || property.hasSolarPanels) && (
+              <div className="mt-4 pt-4 border-t border-slate-100 space-y-2 text-sm">
+                {property.heatingSystem && property.heatingSystem !== "onbekend" && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Verwarming</span>
+                    <span className="text-slate-800 font-medium capitalize">{property.heatingSystem.replace("_", " ")}</span>
+                  </div>
+                )}
+                {property.hasSolarPanels && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Zonnepanelen</span>
+                    <span className="text-slate-800 font-medium">{property.solarPanelCount ? `${property.solarPanelCount} stuks` : "Ja"}</span>
+                  </div>
+                )}
+                {property.targetEnergyLabel && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Streef-label</span>
+                    <span className="text-slate-800 font-medium">{property.targetEnergyLabel}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Subscription Management */}
@@ -141,7 +721,6 @@ export default function AdminPropertyDetail() {
               <CreditCard className="w-4 h-4 text-slate-500" />
               <h3 className="font-medium text-slate-800 text-sm">Abonnement</h3>
             </div>
-            {/* Current tier badge */}
             {property.subscriptionType && (
               <div className="mb-4">
                 <span
@@ -161,7 +740,6 @@ export default function AdminPropertyDetail() {
                 )}
               </div>
             )}
-            {/* Tier selector */}
             <div className="space-y-2">
               <p className="text-xs text-slate-500 mb-2">Pakket wijzigen:</p>
               <div className="grid grid-cols-1 gap-1.5">
@@ -171,16 +749,10 @@ export default function AdminPropertyDetail() {
                   return (
                     <button
                       key={tier}
-                      onClick={() => {
-                        if (!isActive) {
-                          setTier.mutate({ propertyId, tier });
-                        }
-                      }}
+                      onClick={() => { if (!isActive) setTier.mutate({ propertyId, tier }); }}
                       disabled={isActive || setTier.isPending}
                       className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
-                        isActive
-                          ? "border-transparent cursor-default"
-                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+                        isActive ? "border-transparent cursor-default" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
                       }`}
                       style={isActive ? { backgroundColor: `${color}15`, borderColor: `${color}40`, color } : {}}
                     >
@@ -215,7 +787,7 @@ export default function AdminPropertyDetail() {
           </div>
         </div>
 
-        {/* Right column: inspections + issues */}
+        {/* Right column */}
         <div className="lg:col-span-2 space-y-5">
           {/* Inspections */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -326,9 +898,7 @@ export default function AdminPropertyDetail() {
                       </div>
                       <select
                         value={issue.status}
-                        onChange={(e) =>
-                          updateIssue.mutate({ id: issue.id, status: e.target.value as any })
-                        }
+                        onChange={(e) => updateIssue.mutate({ id: issue.id, status: e.target.value as any })}
                         className="text-xs border border-slate-200 rounded px-2 py-1 text-slate-600 focus:outline-none flex-shrink-0"
                       >
                         <option value="open">Open</option>
@@ -381,6 +951,16 @@ export default function AdminPropertyDetail() {
           </div>
         </div>
       </div>
+
+      {/* Paspoort Edit Modal */}
+      {showPaspoortModal && property && (
+        <PaspoortEditModal
+          property={property}
+          onClose={() => setShowPaspoortModal(false)}
+          onSave={(data) => updateProperty.mutate({ id: propertyId, ...data })}
+          isSaving={updateProperty.isPending}
+        />
+      )}
 
       {/* Issue modal */}
       {showIssueModal && (

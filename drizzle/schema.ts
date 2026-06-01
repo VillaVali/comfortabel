@@ -76,6 +76,69 @@ export const properties = mysqlTable("properties", {
   nextInspectionDate: timestamp("nextInspectionDate"),
   photoUrl: text("photoUrl"),
   notes: text("notes"),
+
+  // ── Blok 2: Waarde & Financieel ───────────────────────────────────────────
+  wozValue: int("wozValue"),                          // WOZ-waarde in €
+  wozYear: int("wozYear"),                            // Peiljaar WOZ
+  purchasePrice: int("purchasePrice"),                // Koopsom bij aankoop in €
+  purchaseYear: int("purchaseYear"),                  // Aankoopjaar
+  vveContribution: int("vveContribution"),            // VvE-bijdrage per maand in €
+  mortgageProvider: varchar("mortgageProvider", { length: 200 }), // Hypotheekverstrekker
+  erfpachtCanon: int("erfpachtCanon"),                // Erfpachtcanon per jaar in €
+  insuranceExpiry: timestamp("insuranceExpiry"),      // Vervaldatum opstalverzekering
+
+  // ── Blok 3: Juridisch & Omgeving ─────────────────────────────────────────
+  ownershipType: mysqlEnum("ownershipType", [
+    "volle_eigendom", "erfpacht", "appartementsrecht", "opstalrecht", "onbekend"
+  ]).default("volle_eigendom"),
+  kadastraleAanduiding: varchar("kadastraleAanduiding", { length: 100 }), // bijv. "Amsterdam B 1234"
+  isMonument: boolean("isMonument").default(false),   // Rijks- of gemeentelijk monument
+  monumentType: mysqlEnum("monumentType", ["rijksmonument", "gemeentelijk", "geen"]).default("geen"),
+  hasErfpacht: boolean("hasErfpacht").default(false),
+  hasBeslag: boolean("hasBeslag").default(false),     // Beslag of hypotheekrecht
+  bestemmingUrl: text("bestemmingUrl"),               // Link naar omgevingsloket
+  bestemmingCategory: varchar("bestemmingCategory", { length: 100 }), // bijv. "Wonen"
+  buurtCode: varchar("buurtCode", { length: 20 }),    // CBS buurtcode
+  wijk: varchar("wijk", { length: 100 }),             // Wijknaam
+
+  // ── Blok 4: Technische Kenmerken ─────────────────────────────────────────
+  foundationType: mysqlEnum("foundationType", [
+    "paalfundering", "strookfundering", "plaatfundering", "onbekend"
+  ]).default("onbekend"),
+  roofType: mysqlEnum("roofType", [
+    "zadeldak", "plat_dak", "mansardedak", "schilddak", "lessenaarsdak", "onbekend"
+  ]).default("onbekend"),
+  roofMaterial: mysqlEnum("roofMaterial", [
+    "dakpannen", "bitumen", "zink", "riet", "leisteen", "onbekend"
+  ]).default("onbekend"),
+  wallType: mysqlEnum("wallType", [
+    "spouwmuur", "massief", "houtskelet", "onbekend"
+  ]).default("onbekend"),
+  heatingSystem: mysqlEnum("heatingSystem", [
+    "cv_ketel", "warmtepomp", "stadsverwarming", "elektrisch", "geen", "onbekend"
+  ]).default("onbekend"),
+  heatingYear: int("heatingYear"),                    // Bouwjaar CV/warmtepomp
+  hotWaterSystem: mysqlEnum("hotWaterSystem", [
+    "combiketel", "boiler", "zonneboiler", "warmtepomp", "onbekend"
+  ]).default("onbekend"),
+  hasSolarPanels: boolean("hasSolarPanels").default(false),
+  solarPanelCount: int("solarPanelCount"),
+  solarPanelYear: int("solarPanelYear"),
+  hasEVCharger: boolean("hasEVCharger").default(false),
+  hasGasConnection: boolean("hasGasConnection").default(true),
+  glazingType: mysqlEnum("glazingType", [
+    "enkel", "dubbel", "hr_plus", "hr_plus_plus", "triple", "gemengd", "onbekend"
+  ]).default("onbekend"),
+  wallInsulation: mysqlEnum("wallInsulation", ["aanwezig", "deels", "afwezig", "onbekend"]).default("onbekend"),
+  roofInsulation: mysqlEnum("roofInsulation", ["aanwezig", "deels", "afwezig", "onbekend"]).default("onbekend"),
+  floorInsulation: mysqlEnum("floorInsulation", ["aanwezig", "deels", "afwezig", "onbekend"]).default("onbekend"),
+
+  // ── Blok 5: Verduurzaming & Ambities ─────────────────────────────────────
+  targetEnergyLabel: mysqlEnum("targetEnergyLabel", ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]),
+  gasVrijDoeljaar: int("gasVrijDoeljaar"),             // Doeljaar aardgasvrij
+  sustainabilityMeasures: text("sustainabilityMeasures"), // JSON array of taken measures
+  subsidiesApplied: text("subsidiesApplied"),         // JSON array of subsidies
+
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

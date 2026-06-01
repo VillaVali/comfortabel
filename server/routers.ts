@@ -231,6 +231,7 @@ const propertiesRouter = t.router({
     .input(
       z.object({
         id: z.number(),
+        // Blok 1: Basisidentiteit
         street: z.string().optional(),
         houseNumber: z.string().optional(),
         postalCode: z.string().optional(),
@@ -244,15 +245,55 @@ const propertiesRouter = t.router({
         energyLabel: z
           .enum(["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"])
           .optional(),
-        subscriptionType: z
-          .enum(["free", "digital", "basis", "plus", "premium"])
-          .optional(),
+        subscriptionType: z.enum(["free", "digital", "basis", "plus", "premium"]).optional(),
         subscriptionActive: z.boolean().optional(),
         subscriptionStartDate: z.date().optional(),
         subscriptionEndDate: z.date().optional(),
         notes: z.string().optional(),
         lastInspectionDate: z.date().optional(),
         nextInspectionDate: z.date().optional(),
+        // Blok 2: Waarde & Financieel
+        wozValue: z.number().optional(),
+        wozYear: z.number().optional(),
+        purchasePrice: z.number().optional(),
+        purchaseYear: z.number().optional(),
+        vveContribution: z.number().optional(),
+        mortgageProvider: z.string().optional(),
+        erfpachtCanon: z.number().optional(),
+        insuranceExpiry: z.date().optional(),
+        // Blok 3: Juridisch & Omgeving
+        ownershipType: z.enum(["volle_eigendom", "erfpacht", "appartementsrecht", "opstalrecht", "onbekend"]).optional(),
+        kadastraleAanduiding: z.string().optional(),
+        isMonument: z.boolean().optional(),
+        monumentType: z.enum(["rijksmonument", "gemeentelijk", "geen"]).optional(),
+        hasErfpacht: z.boolean().optional(),
+        hasBeslag: z.boolean().optional(),
+        bestemmingUrl: z.string().optional(),
+        bestemmingCategory: z.string().optional(),
+        buurtCode: z.string().optional(),
+        wijk: z.string().optional(),
+        // Blok 4: Technische Kenmerken
+        foundationType: z.enum(["paalfundering", "strookfundering", "plaatfundering", "onbekend"]).optional(),
+        roofType: z.enum(["zadeldak", "plat_dak", "mansardedak", "schilddak", "lessenaarsdak", "onbekend"]).optional(),
+        roofMaterial: z.enum(["dakpannen", "bitumen", "zink", "riet", "leisteen", "onbekend"]).optional(),
+        wallType: z.enum(["spouwmuur", "massief", "houtskelet", "onbekend"]).optional(),
+        heatingSystem: z.enum(["cv_ketel", "warmtepomp", "stadsverwarming", "elektrisch", "geen", "onbekend"]).optional(),
+        heatingYear: z.number().optional(),
+        hotWaterSystem: z.enum(["combiketel", "boiler", "zonneboiler", "warmtepomp", "onbekend"]).optional(),
+        hasSolarPanels: z.boolean().optional(),
+        solarPanelCount: z.number().optional(),
+        solarPanelYear: z.number().optional(),
+        hasEVCharger: z.boolean().optional(),
+        hasGasConnection: z.boolean().optional(),
+        glazingType: z.enum(["enkel", "dubbel", "hr_plus", "hr_plus_plus", "triple", "gemengd", "onbekend"]).optional(),
+        wallInsulation: z.enum(["aanwezig", "deels", "afwezig", "onbekend"]).optional(),
+        roofInsulation: z.enum(["aanwezig", "deels", "afwezig", "onbekend"]).optional(),
+        floorInsulation: z.enum(["aanwezig", "deels", "afwezig", "onbekend"]).optional(),
+        // Blok 5: Verduurzaming
+        targetEnergyLabel: z.enum(["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]).optional(),
+        gasVrijDoeljaar: z.number().optional(),
+        sustainabilityMeasures: z.string().optional(),
+        subsidiesApplied: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {

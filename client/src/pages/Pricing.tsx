@@ -4,7 +4,7 @@ import {
 import {
   SUBSCRIPTION_TIERS, SUBSCRIPTION_LABELS, SUBSCRIPTION_PRICES,
   SUBSCRIPTION_DESCRIPTIONS, SUBSCRIPTION_COLORS, PLAN_FEATURES,
-  FEATURE_LABELS, type SubscriptionTier, type FeatureKey,
+  FEATURE_LABELS, FEATURE_ORDER, type SubscriptionTier,
 } from "@shared/const";
 
 const TIER_ICONS: Record<SubscriptionTier, React.ReactNode> = {
@@ -14,21 +14,6 @@ const TIER_ICONS: Record<SubscriptionTier, React.ReactNode> = {
   plus: <Wrench className="w-5 h-5" />,
   premium: <Star className="w-5 h-5" />,
 };
-
-const FEATURE_ORDER: FeatureKey[] = [
-  "woningpaspoort",
-  "documenten",
-  "woningScore",
-  "onderhoud",
-  "urgentieAlerts",
-  "pdfRapport",
-  "nulmeting",
-  "planning",
-  "prioriteitsOnderhoud",
-  "kostenOverzicht",
-  "jaarlijkseInspectie",
-  "directContact",
-];
 
 export default function Pricing() {
   return (

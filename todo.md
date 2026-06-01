@@ -85,3 +85,15 @@
 - [x] Onboarding: welkomstpagina (/welkom) met pakketoverzicht
 - [x] Tests: 6 nieuwe subscription unit tests (19 totaal, alle geslaagd)
 - [x] TypeScript: geen fouten
+
+## Fase 8: Woningpaspoort™ Uitbreiding (6 blokken)
+- [ ] Schema: Blok 2 velden — wozValue, wozYear, purchasePrice, purchaseYear, vveContribution, mortgageProvider, erfpachtCanon, insuranceExpiry
+- [ ] Schema: Blok 3 velden — ownershipType, kadastraleAanduiding, isMonument, hasErfpacht, bestemmingUrl, bestemmingCategory, hasBeslag
+- [ ] Schema: Blok 4 velden — foundationType, roofType, roofMaterial, wallType, heatingSystem, heatingYear, hotWaterSystem, hasSolarPanels, solarPanelCount, solarPanelYear, hasEVCharger, hasGasConnection, glazingType, wallInsulation, roofInsulation, floorInsulation
+- [ ] Schema: Blok 5 velden — targetEnergyLabel, gasVrijDoeljaar, sustainabilityMeasures, subsidiesApplied
+- [ ] Database migratie uitvoeren
+- [ ] Backend: properties.get en properties.update procedures uitbreiden
+- [ ] Admin PropertyDetail: 6 bewerkbare blokken als accordeon
+- [ ] Client paspoort-tab: volledig herbouwen met alle 6 blokken en tier-gating
+- [ ] Demo-data: Patrick Valpoort en Manon — alle blokken gevuld
+- [ ] TypeScript: geen fouten, alle tests slagen

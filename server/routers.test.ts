@@ -135,11 +135,12 @@ describe("shared constants", () => {
 
   it("Free tier has no paid features", () => {
     const free = PLAN_FEATURES.free;
-    expect(free.woningpaspoort).toBe(true);
-    expect(free.woningScore).toBe(false);
-    expect(free.documenten).toBe(false);
-    expect(free.onderhoud).toBe(false);
-    expect(free.planning).toBe(false);
+    expect(free.paspoortBeperkt).toBe(true);
+    expect(free.comfortabelScore).toBe(true);
+    expect(free.paspoortUitgebreid).toBe(false);
+    expect(free.documentenUitgebreid).toBe(false);
+    expect(free.onderhoudsplanning).toBe(false);
+    expect(free.whatsappSupport).toBe(false);
   });
 
   it("Premium tier has all features", () => {
