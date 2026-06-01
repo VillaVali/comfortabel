@@ -16,6 +16,36 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import DocumentsPanel from "../../components/DocumentsPanel";
+import {
+  PLAN_FEATURES, SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS,
+  SUBSCRIPTION_PRICES, type SubscriptionTier,
+} from "@shared/const";
+import { Lock, ArrowUpRight } from "lucide-react";
+
+function LockedFeature({ tier, feature }: { tier: SubscriptionTier; feature: string }) {
+  const upgradeTier = tier === "free" ? "digital" : tier === "digital" ? "basis" : tier === "basis" ? "plus" : "premium";
+  const color = SUBSCRIPTION_COLORS[upgradeTier];
+  return (
+    <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center">
+      <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <Lock className="w-6 h-6 text-slate-400" />
+      </div>
+      <h3 className="font-semibold text-slate-700 mb-2">{feature} niet beschikbaar</h3>
+      <p className="text-sm text-slate-400 mb-5 max-w-xs mx-auto">
+        Upgrade naar <strong style={{ color }}>{SUBSCRIPTION_LABELS[upgradeTier]}</strong> om
+        toegang te krijgen tot deze functie.
+      </p>
+      <a
+        href="/abonnementen"
+        className="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl text-white transition-all hover:opacity-90"
+        style={{ backgroundColor: color }}
+      >
+        Bekijk pakketten
+        <ArrowUpRight className="w-4 h-4" />
+      </a>
+    </div>
+  );
+}
 
 export default function ClientProperty() {
   const params = useParams<{ id: string }>();
@@ -34,6 +64,10 @@ export default function ClientProperty() {
   const latestInspection = inspections.find((i) => i.status === "afgerond");
   const openIssues = issues.filter((i) => i.status !== "afgerond");
   const urgentIssues = openIssues.filter((i) => i.priority === "urgent");
+
+  // Feature flags based on subscription tier
+  const tier = (property?.subscriptionType ?? "free") as SubscriptionTier;
+  const features = PLAN_FEATURES[tier];
 
   if (!property) {
     return (
@@ -64,7 +98,28 @@ export default function ClientProperty() {
         </div>
       )}
 
-      {/* Score card */}
+      {/* Subscription badge */}
+      <div className="flex items-center justify-between mb-4">
+        <span
+          className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full"
+          style={{
+            backgroundColor: `${SUBSCRIPTION_COLORS[tier]}20`,
+            color: SUBSCRIPTION_COLORS[tier],
+          }}
+        >
+          {SUBSCRIPTION_LABELS[tier]}
+          {SUBSCRIPTION_PRICES[tier] > 0 ? ` • €${SUBSCRIPTION_PRICES[tier]}/mnd` : " • Gratis"}
+        </span>
+        <a
+          href="/abonnementen"
+          className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+        >
+          Pakket wijzigen
+          <ArrowUpRight className="w-3 h-3" />
+        </a>
+      </div>
+
+      {/* Score card — gated for woningScore */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-slate-800">Woning Score™</h2>
@@ -74,21 +129,35 @@ export default function ClientProperty() {
                 Inspectie: {new Date(latestInspection.inspectionDate).toLocaleDateString("nl-NL")}
               </span>
             )}
-            <button
-              onClick={downloadReport}
-              className="flex items-center gap-1.5 text-xs text-[#1E3A5F] border border-[#1E3A5F]/20 px-3 py-1.5 rounded-lg hover:bg-[#1E3A5F]/5 transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Rapport
-            </button>
+            {features.pdfRapport && (
+              <button
+                onClick={downloadReport}
+                className="flex items-center gap-1.5 text-xs text-[#1E3A5F] border border-[#1E3A5F]/20 px-3 py-1.5 rounded-lg hover:bg-[#1E3A5F]/5 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Rapport
+              </button>
+            )}
           </div>
         </div>
-        <WoningScore
-          grade={latestInspection?.woningGrade as any}
-          totalScore={latestInspection?.totalScore}
-          size="lg"
-        />
-        {latestInspection && latestInspection.status === "afgerond" && (
+        {features.woningScore ? (
+          <WoningScore
+            grade={latestInspection?.woningGrade as any}
+            totalScore={latestInspection?.totalScore}
+            size="lg"
+          />
+        ) : (
+          <div className="flex flex-col items-center py-6">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-3">
+              <Lock className="w-7 h-7 text-slate-300" />
+            </div>
+            <p className="text-sm text-slate-500 mb-3">Woning Score™ is beschikbaar vanaf <strong>Basis</strong></p>
+            <a href="/abonnementen" className="text-xs text-[#1E3A5F] font-semibold hover:underline flex items-center gap-1">
+              Upgrade <ArrowUpRight className="w-3 h-3" />
+            </a>
+          </div>
+        )}
+        {features.woningScore && latestInspection && latestInspection.status === "afgerond" && (
           <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <ScoreBar score={latestInspection.scoreInstallaties} label="Installaties" />
             <ScoreBar score={latestInspection.scoreBouwkundig} label="Bouwkundig" />
@@ -202,84 +271,86 @@ export default function ClientProperty() {
 
       {activeTab === "onderhoud" && (
         <div className="space-y-3">
-          {openIssues.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 text-center py-14">
-              <CheckCircle className="w-10 h-10 text-emerald-300 mx-auto mb-3" />
-              <h3 className="font-semibold text-slate-700 mb-1">Alles in orde</h3>
-              <p className="text-sm text-slate-400">Geen open onderhoudspunten</p>
-            </div>
-          ) : (
-            openIssues.map((issue) => {
-              const priorityColor =
-                issue.priority === "urgent"
-                  ? "border-red-200 bg-red-50"
-                  : issue.priority === "hoog"
-                  ? "border-orange-200 bg-orange-50"
-                  : "border-slate-200 bg-white";
-              const priorityTextColor =
-                issue.priority === "urgent"
-                  ? "text-red-700"
-                  : issue.priority === "hoog"
-                  ? "text-orange-700"
-                  : "text-slate-600";
-
-              return (
-                <div key={issue.id} className={`rounded-2xl border p-5 ${priorityColor}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-semibold uppercase tracking-wide ${priorityTextColor}`}>
-                          {issue.priority}
+          {!features.onderhoud && (
+            <LockedFeature tier={tier} feature="Onderhoudsbeheer" />
+          )}
+          {features.onderhoud && (
+            <div className="space-y-3">
+              {openIssues.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 text-center py-14">
+                  <CheckCircle className="w-10 h-10 text-emerald-300 mx-auto mb-3" />
+                  <h3 className="font-semibold text-slate-700 mb-1">Alles in orde</h3>
+                  <p className="text-sm text-slate-400">Geen open onderhoudspunten</p>
+                </div>
+              ) : (
+                openIssues.map((issue) => {
+                  const priorityColor =
+                    issue.priority === "urgent"
+                      ? "border-red-200 bg-red-50"
+                      : issue.priority === "hoog"
+                      ? "border-orange-200 bg-orange-50"
+                      : "border-slate-200 bg-white";
+                  const priorityTextColor =
+                    issue.priority === "urgent"
+                      ? "text-red-700"
+                      : issue.priority === "hoog"
+                      ? "text-orange-700"
+                      : "text-slate-600";
+                  return (
+                    <div key={issue.id} className={`rounded-2xl border p-5 ${priorityColor}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs font-semibold uppercase tracking-wide ${priorityTextColor}`}>
+                              {issue.priority}
+                            </span>
+                            {issue.category && (
+                              <span className="text-xs text-slate-400">· {issue.category}</span>
+                            )}
+                          </div>
+                          <h4 className="font-semibold text-slate-800">{issue.title}</h4>
+                          {issue.description && (
+                            <p className="text-sm text-slate-600 mt-1">{issue.description}</p>
+                          )}
+                        </div>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                            issue.status === "in_behandeling"
+                              ? "bg-orange-100 text-orange-700"
+                              : issue.status === "gepland"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-white text-slate-500 border border-slate-200"
+                          }`}
+                        >
+                          {issue.status.replace("_", " ")}
                         </span>
-                        {issue.category && (
-                          <span className="text-xs text-slate-400">· {issue.category}</span>
-                        )}
                       </div>
-                      <h4 className="font-semibold text-slate-800">{issue.title}</h4>
-                      {issue.description && (
-                        <p className="text-sm text-slate-600 mt-1">{issue.description}</p>
+                      {issue.estimatedCost && (
+                        <p className="text-xs text-slate-500 mt-2">
+                          Geschatte kosten: €{issue.estimatedCost.toLocaleString("nl-NL")}
+                        </p>
                       )}
                     </div>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-                        issue.status === "in_behandeling"
-                          ? "bg-orange-100 text-orange-700"
-                          : issue.status === "gepland"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-white text-slate-500 border border-slate-200"
-                      }`}
-                    >
-                      {issue.status.replace("_", " ")}
-                    </span>
+                  );
+                })
+              )}
+              {issues.filter((i) => i.status === "afgerond").length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-3 border-b border-slate-100">
+                    <h3 className="font-medium text-slate-600 text-sm">
+                      Afgerond ({issues.filter((i) => i.status === "afgerond").length})
+                    </h3>
                   </div>
-                  {issue.estimatedCost && (
-                    <p className="text-xs text-slate-500 mt-2">
-                      Geschatte kosten: €{issue.estimatedCost.toLocaleString("nl-NL")}
-                    </p>
-                  )}
+                  <div className="divide-y divide-slate-50">
+                    {issues.filter((i) => i.status === "afgerond").map((issue) => (
+                      <div key={issue.id} className="px-5 py-3 flex items-center gap-3">
+                        <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        <p className="text-sm text-slate-600 line-through">{issue.title}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              );
-            })
-          )}
-
-          {/* Resolved issues */}
-          {issues.filter((i) => i.status === "afgerond").length > 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h3 className="font-medium text-slate-600 text-sm">
-                  Afgerond ({issues.filter((i) => i.status === "afgerond").length})
-                </h3>
-              </div>
-              <div className="divide-y divide-slate-50">
-                {issues
-                  .filter((i) => i.status === "afgerond")
-                  .map((issue) => (
-                    <div key={issue.id} className="px-5 py-3 flex items-center gap-3">
-                      <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                      <p className="text-sm text-slate-600 line-through">{issue.title}</p>
-                    </div>
-                  ))}
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -287,43 +358,50 @@ export default function ClientProperty() {
 
       {activeTab === "planning" && (
         <div>
-          {planning.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 text-center py-14">
-              <Calendar className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-              <p className="text-slate-400 text-sm">Nog geen onderhoud gepland</p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-800">Onderhoudsplanning</h3>
-              </div>
-              <div className="divide-y divide-slate-50">
-                {planning.map((p) => (
-                  <div key={p.id} className="px-5 py-4 flex items-start gap-4">
-                    <div className="w-14 flex-shrink-0 text-center">
-                      <span className="text-lg font-bold text-[#1E3A5F]">{p.plannedYear || "?"}</span>
-                      <p className="text-xs text-slate-400 capitalize">{p.horizon}</p>
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-800">{p.title}</p>
-                      {p.description && (
-                        <p className="text-sm text-slate-500 mt-0.5">{p.description}</p>
-                      )}
-                      {p.category && (
-                        <span className="text-xs text-slate-400 mt-1 inline-block">{p.category}</span>
-                      )}
-                    </div>
-                    {p.estimatedCost && (
-                      <div className="text-right flex-shrink-0">
-                        <p className="font-semibold text-slate-800">
-                          €{p.estimatedCost.toLocaleString("nl-NL")}
-                        </p>
-                        <p className="text-xs text-slate-400">geschat</p>
-                      </div>
-                    )}
+          {!features.planning && (
+            <LockedFeature tier={tier} feature="Meerjarenplanning" />
+          )}
+          {features.planning && (
+            <div>
+              {planning.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 text-center py-14">
+                  <Calendar className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+                  <p className="text-slate-400 text-sm">Nog geen onderhoud gepland</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-100">
+                    <h3 className="font-semibold text-slate-800">Onderhoudsplanning</h3>
                   </div>
-                ))}
-              </div>
+                  <div className="divide-y divide-slate-50">
+                    {planning.map((p) => (
+                      <div key={p.id} className="px-5 py-4 flex items-start gap-4">
+                        <div className="w-14 flex-shrink-0 text-center">
+                          <span className="text-lg font-bold text-[#1E3A5F]">{p.plannedYear || "?"}</span>
+                          <p className="text-xs text-slate-400 capitalize">{p.horizon}</p>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-slate-800">{p.title}</p>
+                          {p.description && (
+                            <p className="text-sm text-slate-500 mt-0.5">{p.description}</p>
+                          )}
+                          {p.category && (
+                            <span className="text-xs text-slate-400 mt-1 inline-block">{p.category}</span>
+                          )}
+                        </div>
+                        {p.estimatedCost && (
+                          <div className="text-right flex-shrink-0">
+                            <p className="font-semibold text-slate-800">
+                              €{p.estimatedCost.toLocaleString("nl-NL")}
+                            </p>
+                            <p className="text-xs text-slate-400">geschat</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -331,7 +409,11 @@ export default function ClientProperty() {
 
       {activeTab === "documenten" && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
-          <DocumentsPanel propertyId={propertyId} isAdmin={false} />
+          {features.documenten ? (
+            <DocumentsPanel propertyId={propertyId} isAdmin={false} />
+          ) : (
+            <LockedFeature tier={tier} feature="Documentenmap" />
+          )}
         </div>
       )}
     </ClientLayout>

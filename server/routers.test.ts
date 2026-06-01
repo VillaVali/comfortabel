@@ -114,13 +114,55 @@ describe("auth.logout", () => {
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 
-import { SUBSCRIPTION_LABELS, GRADE_LABELS, GRADE_COLORS } from "../shared/const";
+import {
+  SUBSCRIPTION_LABELS, GRADE_LABELS, GRADE_COLORS,
+  PLAN_FEATURES, SUBSCRIPTION_TIERS, SUBSCRIPTION_PRICES,
+} from "../shared/const";
 
 describe("shared constants", () => {
   it("SUBSCRIPTION_LABELS has all 5 subscription types", () => {
     expect(Object.keys(SUBSCRIPTION_LABELS)).toHaveLength(5);
-    expect(SUBSCRIPTION_LABELS.basis).toBeDefined();
-    expect(SUBSCRIPTION_LABELS.premium).toBeDefined();
+    expect(SUBSCRIPTION_LABELS.free).toBe("Free");
+    expect(SUBSCRIPTION_LABELS.digital).toBe("Digital");
+    expect(SUBSCRIPTION_LABELS.basis).toBe("Basis");
+    expect(SUBSCRIPTION_LABELS.plus).toBe("Plus");
+    expect(SUBSCRIPTION_LABELS.premium).toBe("Premium");
+  });
+
+  it("SUBSCRIPTION_TIERS has 5 tiers in correct order", () => {
+    expect(SUBSCRIPTION_TIERS).toEqual(["free", "digital", "basis", "plus", "premium"]);
+  });
+
+  it("Free tier has no paid features", () => {
+    const free = PLAN_FEATURES.free;
+    expect(free.woningpaspoort).toBe(true);
+    expect(free.woningScore).toBe(false);
+    expect(free.documenten).toBe(false);
+    expect(free.onderhoud).toBe(false);
+    expect(free.planning).toBe(false);
+  });
+
+  it("Premium tier has all features", () => {
+    const premium = PLAN_FEATURES.premium;
+    Object.values(premium).forEach((v) => expect(v).toBe(true));
+  });
+
+  it("Tier features are cumulative (higher tiers have more features)", () => {
+    const countFeatures = (tier: typeof SUBSCRIPTION_TIERS[number]) =>
+      Object.values(PLAN_FEATURES[tier]).filter(Boolean).length;
+    const counts = SUBSCRIPTION_TIERS.map(countFeatures);
+    for (let i = 1; i < counts.length; i++) {
+      expect(counts[i]).toBeGreaterThanOrEqual(counts[i - 1]);
+    }
+  });
+
+  it("Free tier price is 0", () => {
+    expect(SUBSCRIPTION_PRICES.free).toBe(0);
+  });
+
+  it("Premium tier price is highest", () => {
+    const prices = SUBSCRIPTION_TIERS.map((t) => SUBSCRIPTION_PRICES[t]);
+    expect(prices[prices.length - 1]).toBeGreaterThan(prices[0]);
   });
 
   it("GRADE_LABELS covers A through E", () => {

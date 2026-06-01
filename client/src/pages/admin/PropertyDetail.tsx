@@ -15,7 +15,12 @@ import {
   Clock,
   X,
   FileText,
+  CreditCard,
 } from "lucide-react";
+import {
+  SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS, SUBSCRIPTION_PRICES,
+  SUBSCRIPTION_TIERS, type SubscriptionTier,
+} from "@shared/const";
 
 export default function AdminPropertyDetail() {
   const params = useParams<{ id: string }>();
@@ -29,10 +34,21 @@ export default function AdminPropertyDetail() {
     estimatedCost: "",
   });
 
-  const { data: property } = trpc.properties.get.useQuery({ id: propertyId });
+  const [selectedTier, setSelectedTier] = useState<SubscriptionTier | "">("");
+  const utils = trpc.useUtils();
+
+  const { data: property, refetch: refetchProperty } = trpc.properties.get.useQuery({ id: propertyId });
   const { data: inspections = [], refetch: refetchInspections } = trpc.inspections.listByProperty.useQuery({ propertyId });
   const { data: issues = [], refetch: refetchIssues } = trpc.maintenance.listIssues.useQuery({ propertyId });
   const { data: planning = [] } = trpc.maintenance.listPlanning.useQuery({ propertyId });
+
+  const setTier = trpc.subscriptions.setTier.useMutation({
+    onSuccess: () => {
+      toast.success("Abonnement bijgewerkt");
+      refetchProperty();
+    },
+    onError: (e) => toast.error(e.message),
+  });
 
   const createInspection = trpc.inspections.create.useMutation({
     onSuccess: (data) => {
@@ -105,10 +121,9 @@ export default function AdminPropertyDetail() {
               {[
                 ["Type", property.propertyType],
                 ["Bouwjaar", property.buildYear],
-                ["Oppervlakte", property.surfaceM2 ? `${property.surfaceM2} m²` : null],
+                ["Oppervlakte", property.surfaceM2 ? `${property.surfaceM2} m\u00b2` : null],
                 ["Bewoners", property.residents],
                 ["Energielabel", property.energyLabel],
-                ["Abonnement", property.subscriptionType],
               ].map(([label, value]) =>
                 value ? (
                   <div key={label as string} className="flex justify-between">
@@ -117,6 +132,66 @@ export default function AdminPropertyDetail() {
                   </div>
                 ) : null
               )}
+            </div>
+          </div>
+
+          {/* Subscription Management */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="w-4 h-4 text-slate-500" />
+              <h3 className="font-medium text-slate-800 text-sm">Abonnement</h3>
+            </div>
+            {/* Current tier badge */}
+            {property.subscriptionType && (
+              <div className="mb-4">
+                <span
+                  className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full"
+                  style={{
+                    backgroundColor: `${SUBSCRIPTION_COLORS[property.subscriptionType as SubscriptionTier]}20`,
+                    color: SUBSCRIPTION_COLORS[property.subscriptionType as SubscriptionTier],
+                  }}
+                >
+                  {SUBSCRIPTION_LABELS[property.subscriptionType as SubscriptionTier]}
+                  {property.subscriptionActive ? " • Actief" : " • Inactief"}
+                </span>
+                {SUBSCRIPTION_PRICES[property.subscriptionType as SubscriptionTier] > 0 && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    €{SUBSCRIPTION_PRICES[property.subscriptionType as SubscriptionTier]}/mnd
+                  </p>
+                )}
+              </div>
+            )}
+            {/* Tier selector */}
+            <div className="space-y-2">
+              <p className="text-xs text-slate-500 mb-2">Pakket wijzigen:</p>
+              <div className="grid grid-cols-1 gap-1.5">
+                {SUBSCRIPTION_TIERS.map((tier) => {
+                  const isActive = property.subscriptionType === tier;
+                  const color = SUBSCRIPTION_COLORS[tier];
+                  return (
+                    <button
+                      key={tier}
+                      onClick={() => {
+                        if (!isActive) {
+                          setTier.mutate({ propertyId, tier });
+                        }
+                      }}
+                      disabled={isActive || setTier.isPending}
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-all border ${
+                        isActive
+                          ? "border-transparent cursor-default"
+                          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50 cursor-pointer"
+                      }`}
+                      style={isActive ? { backgroundColor: `${color}15`, borderColor: `${color}40`, color } : {}}
+                    >
+                      <span>{SUBSCRIPTION_LABELS[tier]}</span>
+                      <span className="text-slate-400">
+                        {SUBSCRIPTION_PRICES[tier] === 0 ? "Gratis" : `€${SUBSCRIPTION_PRICES[tier]}/mnd`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
 

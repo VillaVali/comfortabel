@@ -64,3 +64,24 @@
 - [x] Responsive AdminLayout: sidebar inklapbaar op mobiel (hamburger menu)
 - [x] Touch-vriendelijke knoppen en lijstitems (min 44px touch target)
 - [x] Mobiele login pagina (al responsive, geen wijzigingen nodig)
+
+## Fase 7: Abonnementsstructuur (Free / Digital / Basis / Plus / Premium)
+- [x] Database: subscriptionType enum uitgebreid naar 5 tiers (free, digital, basis, plus, premium)
+- [x] Database: subscriptionStartDate en subscriptionEndDate kolommen toegevoegd
+- [x] Backend: subscription feature-flags helper (welke features per tier)
+- [x] Backend: tRPC subscriptions router (getTier, setTier, getStats)
+- [x] Shared: PLAN_FEATURES constante met feature-matrix per tier (12 features)
+- [x] Shared: SUBSCRIPTION_LABELS, SUBSCRIPTION_PRICES, SUBSCRIPTION_COLORS, SUBSCRIPTION_DESCRIPTIONS
+- [x] Homepage: pricing-sectie met 5 pakketten en CTA
+- [x] Pricing-pagina (/abonnementen): volledige vergelijkingstabel + FAQ
+- [x] Admin PropertyDetail: abonnement-kaart met tier-selector en actieve badge
+- [x] Client portal: tier-gekleurde badges op woningkaarten (Dashboard)
+- [x] Client portal: pakketbadge + upgrade-link in woningpagina header
+- [x] Client portal: Woning Score™ vergrendeld voor free/digital
+- [x] Client portal: Documenten tab vergrendeld voor free
+- [x] Client portal: Planning tab vergrendeld voor free/digital/basis
+- [x] Client portal: PDF-rapport download vergrendeld voor free/digital
+- [x] Client portal: LockedFeature component met upgrade-prompt
+- [x] Onboarding: welkomstpagina (/welkom) met pakketoverzicht
+- [x] Tests: 6 nieuwe subscription unit tests (19 totaal, alle geslaagd)
+- [x] TypeScript: geen fouten

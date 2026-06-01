@@ -13,6 +13,8 @@ import AdminUsers from "./pages/admin/Users";
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientProperty from "./pages/client/Property";
 import NotFound from "./pages/NotFound";
+import Pricing from "./pages/Pricing";
+import Onboarding from "./pages/Onboarding";
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
+        <Route path="/abonnementen" component={Pricing} />
+        <Route path="/welkom" component={Onboarding} />
         {/* Admin routes */}
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/customers" component={AdminCustomers} />

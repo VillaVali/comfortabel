@@ -2,6 +2,9 @@ import ClientLayout from "../../components/ClientLayout";
 import { trpc } from "../../lib/trpc";
 import WoningScore from "../../components/WoningScore";
 import { Home, ArrowRight, ClipboardCheck, AlertTriangle } from "lucide-react";
+import {
+  SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS, type SubscriptionTier,
+} from "@shared/const";
 
 export default function ClientDashboard() {
   const { data: properties = [], isLoading } = trpc.properties.myProperties.useQuery();
@@ -116,11 +119,20 @@ function PropertyCard({ property }: { property: any }) {
       </div>
 
       {/* Subscription badge */}
-      <div className="mt-3 pt-3 border-t border-slate-50">
-        <span className="text-xs text-slate-400">
-          Abonnement:{" "}
-          <span className="font-medium text-[#1E3A5F] capitalize">{property.subscriptionType}</span>
-        </span>
+      <div className="mt-3 pt-3 border-t border-slate-50 flex items-center justify-between">
+        {property.subscriptionType ? (
+          <span
+            className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full"
+            style={{
+              backgroundColor: `${SUBSCRIPTION_COLORS[property.subscriptionType as SubscriptionTier]}18`,
+              color: SUBSCRIPTION_COLORS[property.subscriptionType as SubscriptionTier],
+            }}
+          >
+            {SUBSCRIPTION_LABELS[property.subscriptionType as SubscriptionTier]}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-400">Geen pakket</span>
+        )}
       </div>
     </a>
   );

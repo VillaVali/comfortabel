@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import superjson from "superjson";
 import { z } from "zod";
 import { TrpcContext, COOKIE_NAME } from "./context";
+import { PLAN_FEATURES, SUBSCRIPTION_LABELS, SUBSCRIPTION_PRICES, SUBSCRIPTION_DESCRIPTIONS, type SubscriptionTier } from "../shared/const";
 import { getDb } from "./db";
 import {
   users,
@@ -214,7 +215,7 @@ const propertiesRouter = t.router({
           .enum(["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"])
           .optional(),
         subscriptionType: z
-          .enum(["basis", "plus", "premium", "vve", "verhuur"])
+          .enum(["free", "digital", "basis", "plus", "premium"])
           .optional(),
         notes: z.string().optional(),
       })
@@ -244,9 +245,11 @@ const propertiesRouter = t.router({
           .enum(["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"])
           .optional(),
         subscriptionType: z
-          .enum(["basis", "plus", "premium", "vve", "verhuur"])
+          .enum(["free", "digital", "basis", "plus", "premium"])
           .optional(),
         subscriptionActive: z.boolean().optional(),
+        subscriptionStartDate: z.date().optional(),
+        subscriptionEndDate: z.date().optional(),
         notes: z.string().optional(),
         lastInspectionDate: z.date().optional(),
         nextInspectionDate: z.date().optional(),
@@ -609,6 +612,78 @@ const documentsRouter = t.router({
     }),
 });
 
+// ─── Subscriptions router ────────────────────────────────────────────────────
+
+const subscriptionsRouter = t.router({
+  // Get feature flags for a given tier
+  getFeatures: publicProcedure
+    .input(z.object({ tier: z.enum(["free", "digital", "basis", "plus", "premium"]) }))
+    .query(({ input }) => {
+      return {
+        tier: input.tier,
+        features: PLAN_FEATURES[input.tier as SubscriptionTier],
+        label: SUBSCRIPTION_LABELS[input.tier as SubscriptionTier],
+        price: SUBSCRIPTION_PRICES[input.tier as SubscriptionTier],
+        description: SUBSCRIPTION_DESCRIPTIONS[input.tier as SubscriptionTier],
+      };
+    }),
+
+  // Get all tiers with their features (for pricing page)
+  getAllTiers: publicProcedure.query(() => {
+    const tiers: SubscriptionTier[] = ["free", "digital", "basis", "plus", "premium"];
+    return tiers.map((tier) => ({
+      tier,
+      label: SUBSCRIPTION_LABELS[tier],
+      price: SUBSCRIPTION_PRICES[tier],
+      description: SUBSCRIPTION_DESCRIPTIONS[tier],
+      features: PLAN_FEATURES[tier],
+    }));
+  }),
+
+  // Admin: update subscription tier for a property
+  setTier: adminProcedure
+    .input(z.object({
+      propertyId: z.number(),
+      tier: z.enum(["free", "digital", "basis", "plus", "premium"]),
+      startDate: z.date().optional(),
+      endDate: z.date().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db.update(properties).set({
+        subscriptionType: input.tier,
+        subscriptionActive: true,
+        subscriptionStartDate: input.startDate,
+        subscriptionEndDate: input.endDate,
+      }).where(eq(properties.id, input.propertyId));
+      return { success: true };
+    }),
+
+  // Admin: get subscription stats for dashboard
+  getStats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const allProperties = await db.select({
+      subscriptionType: properties.subscriptionType,
+      subscriptionActive: properties.subscriptionActive,
+    }).from(properties);
+
+    const tiers: SubscriptionTier[] = ["free", "digital", "basis", "plus", "premium"];
+    const counts = tiers.reduce((acc, tier) => {
+      acc[tier] = allProperties.filter(
+        (p) => p.subscriptionType === tier && p.subscriptionActive
+      ).length;
+      return acc;
+    }, {} as Record<SubscriptionTier, number>);
+
+    return {
+      total: allProperties.filter((p) => p.subscriptionActive).length,
+      byTier: counts,
+    };
+  }),
+});
+
 // ─── App router ───────────────────────────────────────────────────────────────
 
 export const appRouter = t.router({
@@ -619,6 +694,7 @@ export const appRouter = t.router({
   maintenance: maintenanceRouter,
   users: usersRouter,
   documents: documentsRouter,
+  subscriptions: subscriptionsRouter,
 });
 
 export type AppRouter = typeof appRouter;

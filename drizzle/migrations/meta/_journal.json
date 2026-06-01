@@ -8,6 +8,20 @@
       "when": 1778978946056,
       "tag": "0000_supreme_demogoblin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1780298300943,
+      "tag": "0001_shocking_doctor_doom",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1780341920783,
+      "tag": "0002_stiff_leader",
+      "breakpoints": true
     }
   ]
 }

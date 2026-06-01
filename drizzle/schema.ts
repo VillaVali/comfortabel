@@ -67,9 +67,11 @@ export const properties = mysqlTable("properties", {
   residents: int("residents"),
   energyLabel: mysqlEnum("energyLabel", ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]),
   subscriptionType: mysqlEnum("subscriptionType", [
-    "basis", "plus", "premium", "vve", "verhuur"
-  ]).default("basis"),
+    "free", "digital", "basis", "plus", "premium"
+  ]).default("free"),
   subscriptionActive: boolean("subscriptionActive").default(true).notNull(),
+  subscriptionStartDate: timestamp("subscriptionStartDate"),
+  subscriptionEndDate: timestamp("subscriptionEndDate"),
   lastInspectionDate: timestamp("lastInspectionDate"),
   nextInspectionDate: timestamp("nextInspectionDate"),
   photoUrl: text("photoUrl"),

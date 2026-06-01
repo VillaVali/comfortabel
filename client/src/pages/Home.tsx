@@ -1,9 +1,33 @@
 import { useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { Building2, Shield, ClipboardCheck, BarChart3, ArrowRight, Star } from "lucide-react";
+import {
+  Building2, Shield, ClipboardCheck, BarChart3, ArrowRight, Star,
+  Check, FileText, Wrench, Zap,
+} from "lucide-react";
+import {
+  SUBSCRIPTION_TIERS, SUBSCRIPTION_LABELS, SUBSCRIPTION_PRICES,
+  SUBSCRIPTION_DESCRIPTIONS, SUBSCRIPTION_COLORS,
+  type SubscriptionTier,
+} from "@shared/const";
+
+const TIER_HIGHLIGHTS: Record<SubscriptionTier, string[]> = {
+  free: ["Woningpaspoort\u2122 basisgegevens", "Adres & bouwjaar", "Gratis voor altijd"],
+  digital: ["Alles van Free", "Digitale documentenmap", "Documenten uploaden & delen"],
+  basis: ["Alles van Digital", "Woning Score\u2122 (A\u2013E)", "Professionele 0-meting", "PDF-rapport downloaden", "Urgentie-meldingen"],
+  plus: ["Alles van Basis", "Meerjarenplanning (MJOP)", "Prioriteit & kostenoverzicht", "Volledig kostenoverzicht"],
+  premium: ["Alles van Plus", "Jaarlijkse inspectie inbegrepen", "Direct contact met Comfortabel", "Prioritaire service"],
+};
+
+const TIER_ICONS: Record<SubscriptionTier, React.ReactNode> = {
+  free: <Building2 className="w-5 h-5" />,
+  digital: <FileText className="w-5 h-5" />,
+  basis: <ClipboardCheck className="w-5 h-5" />,
+  plus: <Wrench className="w-5 h-5" />,
+  premium: <Star className="w-5 h-5" />,
+};
 
 export default function Home() {
-  const { user, loading, isAuthenticated, isAdmin } = useAuth();
+  const { loading, isAuthenticated, isAdmin } = useAuth();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
@@ -31,13 +55,21 @@ export default function Home() {
           <Building2 className="w-6 h-6 text-[#C9A84C]" />
           <span className="font-bold text-lg tracking-tight">MijnComfortabel</span>
         </div>
-        <a
-          href="/login"
-          className="flex items-center gap-2 bg-[#C9A84C] text-[#1E3A5F] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#d4b55a] transition-colors"
-        >
-          Inloggen
-          <ArrowRight className="w-4 h-4" />
-        </a>
+        <nav className="flex items-center gap-4">
+          <a
+            href="/abonnementen"
+            className="text-white/70 hover:text-white text-sm transition-colors hidden sm:block"
+          >
+            Abonnementen
+          </a>
+          <a
+            href="/login"
+            className="flex items-center gap-2 bg-[#C9A84C] text-[#1E3A5F] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#d4b55a] transition-colors"
+          >
+            Inloggen
+            <ArrowRight className="w-4 h-4" />
+          </a>
+        </nav>
       </header>
 
       {/* Hero */}
@@ -56,13 +88,21 @@ export default function Home() {
           uw onderhoudspunten en uw Comfortabel Woningpaspoort™ — altijd inzichtelijk, 
           altijd up-to-date.
         </p>
-        <a
-          href="/login"
-          className="inline-flex items-center gap-2 bg-[#C9A84C] text-[#1E3A5F] px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#d4b55a] transition-all hover:scale-105 active:scale-95"
-        >
-          Toegang tot mijn portaal
-          <ArrowRight className="w-5 h-5" />
-        </a>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <a
+            href="/login"
+            className="inline-flex items-center gap-2 bg-[#C9A84C] text-[#1E3A5F] px-8 py-3.5 rounded-xl font-bold text-base hover:bg-[#d4b55a] transition-all hover:scale-105 active:scale-95"
+          >
+            Toegang tot mijn portaal
+            <ArrowRight className="w-5 h-5" />
+          </a>
+          <a
+            href="/abonnementen"
+            className="inline-flex items-center gap-2 bg-white/10 text-white px-8 py-3.5 rounded-xl font-semibold text-base hover:bg-white/20 transition-all border border-white/20"
+          >
+            Bekijk abonnementen
+          </a>
+        </div>
       </section>
 
       {/* Features */}
@@ -96,6 +136,101 @@ export default function Home() {
               <p className="text-sm text-white/60 leading-relaxed">{f.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="max-w-6xl mx-auto px-6 pb-24">
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-1.5 text-sm text-white/80 mb-4">
+            <Zap className="w-3.5 h-3.5 text-[#C9A84C]" />
+            Kies uw pakket
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+            Van gratis tot volledig ontzorgd
+          </h2>
+          <p className="text-white/60 max-w-xl mx-auto">
+            Begin gratis en schakel op wanneer u meer inzicht en service nodig heeft.
+            Geen verplichtingen, altijd opzegbaar.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {SUBSCRIPTION_TIERS.map((tier) => {
+            const isPremium = tier === "premium";
+            const isPlus = tier === "plus";
+            const color = SUBSCRIPTION_COLORS[tier];
+            const highlights = TIER_HIGHLIGHTS[tier];
+            const price = SUBSCRIPTION_PRICES[tier];
+            return (
+              <div
+                key={tier}
+                className={`relative rounded-2xl p-5 flex flex-col border transition-all ${
+                  isPremium
+                    ? "bg-[#C9A84C]/10 border-[#C9A84C]/40 ring-1 ring-[#C9A84C]/30"
+                    : isPlus
+                    ? "bg-white/10 border-white/20"
+                    : "bg-white/5 border-white/10"
+                }`}
+              >
+                {isPremium && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-[#C9A84C] text-[#1E3A5F] text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">
+                      Meest compleet
+                    </span>
+                  </div>
+                )}
+                <div className="mb-4">
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                    style={{ backgroundColor: `${color}25`, color }}
+                  >
+                    {TIER_ICONS[tier]}
+                  </div>
+                  <h3 className="font-bold text-white text-base">{SUBSCRIPTION_LABELS[tier]}</h3>
+                  <p className="text-xs text-white/50 mt-0.5 leading-snug">{SUBSCRIPTION_DESCRIPTIONS[tier]}</p>
+                </div>
+                <div className="mb-4">
+                  {price === 0 ? (
+                    <span className="text-2xl font-bold text-white">Gratis</span>
+                  ) : (
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-white">&euro;{price}</span>
+                      <span className="text-white/50 text-xs">/mnd</span>
+                    </div>
+                  )}
+                </div>
+                <ul className="space-y-1.5 flex-1 mb-5">
+                  {highlights.map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-xs text-white/70">
+                      <Check className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color }} />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <a
+                  href="/login"
+                  className={`w-full text-center py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                    isPremium
+                      ? "bg-[#C9A84C] text-[#1E3A5F] hover:bg-[#d4b55a]"
+                      : "bg-white/10 text-white hover:bg-white/20 border border-white/20"
+                  }`}
+                >
+                  {price === 0 ? "Gratis starten" : "Aan de slag"}
+                </a>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="text-center mt-8">
+          <a
+            href="/abonnementen"
+            className="inline-flex items-center gap-2 text-white/60 hover:text-white text-sm transition-colors"
+          >
+            Volledige vergelijking bekijken
+            <ArrowRight className="w-4 h-4" />
+          </a>
         </div>
       </section>
 
