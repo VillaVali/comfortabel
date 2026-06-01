@@ -13,6 +13,11 @@ import {
   ChevronDown,
   ChevronRight,
   Download,
+  ExternalLink,
+  Leaf,
+  Euro,
+  Star,
+  Globe,
 } from "lucide-react";
 import { useState } from "react";
 import DocumentsPanel from "../../components/DocumentsPanel";
@@ -50,7 +55,8 @@ function LockedFeature({ tier, feature }: { tier: SubscriptionTier; feature: str
 export default function ClientProperty() {
   const params = useParams<{ id: string }>();
   const propertyId = Number(params.id);
-  const [activeTab, setActiveTab] = useState<"paspoort" | "onderhoud" | "planning" | "documenten">("paspoort");
+  const [activeTab, setActiveTab] = useState<"paspoort" | "onderhoud" | "planning" | "documenten" | "downloads">("paspoort");
+  const [generatingReport, setGeneratingReport] = useState<string | null>(null);
 
   const { data: property } = trpc.properties.get.useQuery({ id: propertyId });
   const { data: inspections = [] } = trpc.inspections.listByProperty.useQuery({ propertyId });
@@ -59,6 +65,15 @@ export default function ClientProperty() {
 
   const downloadReport = () => {
     window.open(`/api/reports/woningpaspoort/${propertyId}`, "_blank");
+  };
+
+  const downloadAiReport = async (type: string) => {
+    setGeneratingReport(type);
+    try {
+      window.open(`/api/reports/${type}/${propertyId}`, "_blank");
+    } finally {
+      setTimeout(() => setGeneratingReport(null), 3000);
+    }
   };
 
   const latestInspection = inspections.find((i) => i.status === "afgerond");
@@ -181,6 +196,7 @@ export default function ClientProperty() {
           { id: "onderhoud", label: `Onderhoud ${openIssues.length > 0 ? `(${openIssues.length})` : ""}`, icon: AlertTriangle },
           { id: "planning", label: "Planning", icon: Calendar },
           { id: "documenten", label: "Documenten", icon: FileText },
+          { id: "downloads", label: "Downloads", icon: Download },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -628,6 +644,208 @@ export default function ClientProperty() {
           ) : (
             <LockedFeature tier={tier} feature="Documentenmap" />
           )}
+        </div>
+      )}
+
+      {activeTab === "downloads" && (
+        <div className="space-y-5">
+
+          {/* Gratis openbare downloads */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Globe className="w-4 h-4 text-emerald-500" />
+              <h3 className="font-semibold text-slate-800 text-sm">Gratis openbare bronnen</h3>
+              <span className="ml-auto text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">Altijd gratis</span>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {[
+                {
+                  name: "BAG Viewer — Gebouwkenmerken",
+                  desc: "Bouwjaar, oppervlakte, gebruiksfunctie en status via de Basisregistratie Adressen en Gebouwen",
+                  url: `https://bagviewer.kadaster.nl/lvbag/bag-viewer/#?searchQuery=${encodeURIComponent(`${property.street} ${property.houseNumber}, ${property.city}`)}`,
+                  icon: "🏛️",
+                },
+                {
+                  name: "WOZ-waardeloket — Actuele WOZ-waarde",
+                  desc: "Officiële WOZ-waarde van uw woning, inclusief historische waarden",
+                  url: `https://www.wozwaardeloket.nl/index.jsp?zoekopdracht=${encodeURIComponent(`${property.street} ${property.houseNumber}, ${property.postalCode}`)}`,
+                  icon: "💰",
+                },
+                {
+                  name: "EP-Online — Energielabel",
+                  desc: "Officieel geregistreerd energielabel van uw woning via RVO",
+                  url: `https://www.ep-online.nl/ep-online/zoek-energielabel?adres=${encodeURIComponent(`${property.street} ${property.houseNumber}`)}&postcode=${encodeURIComponent(property.postalCode || "")}`,
+                  icon: "⚡",
+                },
+                {
+                  name: "Kadaster — Perceelkaart",
+                  desc: "Kadastrale perceelgrenzen, eigendomsinformatie en kadastraal nummer",
+                  url: `https://www.kadaster.nl/zakelijk/producten/woning/woningrapport`,
+                  icon: "📐",
+                },
+                {
+                  name: "Omgevingsloket — Bestemmingsplan",
+                  desc: "Bestemmingsplan, omgevingsvergunningen en bouwmogelijkheden in uw omgeving",
+                  url: `https://omgevingswet.overheid.nl/regels-op-de-kaart/viewer/view?locatie=${encodeURIComponent(`${property.street} ${property.houseNumber}, ${property.city}`)}`,
+                  icon: "🗺️",
+                },
+                {
+                  name: "CBS Buurtstatistieken",
+                  desc: "Demografische en economische statistieken van uw buurt",
+                  url: `https://www.cbs.nl/nl-nl/visualisaties/dashboard-bevolking/regionaal/buurt`,
+                  icon: "📊",
+                },
+                {
+                  name: "Rijksmonumentenregister",
+                  desc: "Controleer of uw woning een rijks- of gemeentelijk monument is",
+                  url: `https://monumentenregister.cultureelerfgoed.nl/`,
+                  icon: "🏛️",
+                },
+                {
+                  name: "RVO ISDE Subsidiewijzer",
+                  desc: "Bereken welke subsidies beschikbaar zijn voor isolatie en duurzame energie",
+                  url: `https://www.rvo.nl/subsidies-financiering/isde`,
+                  icon: "💶",
+                },
+              ].map((item) => (
+                <a
+                  key={item.name}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-4 px-5 py-4 hover:bg-slate-50 transition-colors group"
+                >
+                  <span className="text-xl flex-shrink-0 mt-0.5">{item.icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-800 text-sm group-hover:text-[#1E3A5F] transition-colors">{item.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{item.desc}</p>
+                  </div>
+                  <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-[#1E3A5F] flex-shrink-0 mt-1 transition-colors" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* AI-gegenereerde rapporten */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Star className="w-4 h-4 text-amber-500" />
+              <h3 className="font-semibold text-slate-800 text-sm">AI-rapporten op basis van uw Woningpaspoort™</h3>
+            </div>
+            <div className="divide-y divide-slate-50">
+
+              {/* Woningpaspoort PDF */}
+              <div className="flex items-start gap-4 px-5 py-4">
+                <span className="text-xl flex-shrink-0 mt-0.5">📋</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 text-sm">Woningpaspoort™ PDF</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Volledig woningdossier met alle 5 blokken, Comfortabel Score™ en onderhoudsoverzicht</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">Basis+</span>
+                  </div>
+                </div>
+                {features.jaarlijksRapport ? (
+                  <button
+                    onClick={downloadReport}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#1E3A5F] px-4 py-2 rounded-lg hover:bg-[#2d5a8e] transition-colors flex-shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download PDF
+                  </button>
+                ) : (
+                  <a href="/abonnementen" className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex-shrink-0">
+                    <Lock className="w-3.5 h-3.5" />
+                    Upgrade
+                  </a>
+                )}
+              </div>
+
+              {/* Verduurzamingsadvies */}
+              <div className="flex items-start gap-4 px-5 py-4">
+                <span className="text-xl flex-shrink-0 mt-0.5">🌱</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 text-sm">Verduurzamingsadvies Rapport</p>
+                  <p className="text-xs text-slate-500 mt-0.5">AI-gegenereerd persoonlijk advies: top 5 maatregelen, terugverdientijden, aardgasvrij-scenario</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">Digital+</span>
+                    <span className="text-xs text-slate-400">~30 sec generatietijd</span>
+                  </div>
+                </div>
+                {features.exportDossier ? (
+                  <button
+                    onClick={() => downloadAiReport("verduurzaming")}
+                    disabled={generatingReport === "verduurzaming"}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors flex-shrink-0 disabled:opacity-60"
+                  >
+                    {generatingReport === "verduurzaming" ? (
+                      <><Clock className="w-3.5 h-3.5 animate-spin" />Genereren...</>
+                    ) : (
+                      <><Leaf className="w-3.5 h-3.5" />Download PDF</>
+                    )}
+                  </button>
+                ) : (
+                  <a href="/abonnementen" className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex-shrink-0">
+                    <Lock className="w-3.5 h-3.5" />
+                    Upgrade
+                  </a>
+                )}
+              </div>
+
+              {/* Subsidie Berekening */}
+              <div className="flex items-start gap-4 px-5 py-4">
+                <span className="text-xl flex-shrink-0 mt-0.5">💶</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 text-sm">Subsidie Berekening Rapport</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Overzicht van alle beschikbare subsidies (ISDE, SEEH, SVn) met bedragen en aanvraaginstructies</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full">Digital+</span>
+                    <span className="text-xs text-slate-400">~30 sec generatietijd</span>
+                  </div>
+                </div>
+                {features.exportDossier ? (
+                  <button
+                    onClick={() => downloadAiReport("subsidies")}
+                    disabled={generatingReport === "subsidies"}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-white bg-blue-600 px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0 disabled:opacity-60"
+                  >
+                    {generatingReport === "subsidies" ? (
+                      <><Clock className="w-3.5 h-3.5 animate-spin" />Genereren...</>
+                    ) : (
+                      <><Euro className="w-3.5 h-3.5" />Download PDF</>
+                    )}
+                  </button>
+                ) : (
+                  <a href="/abonnementen" className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex-shrink-0">
+                    <Lock className="w-3.5 h-3.5" />
+                    Upgrade
+                  </a>
+                )}
+              </div>
+
+            </div>
+          </div>
+
+          {/* Toekomstige rapporten */}
+          <div className="bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-5">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Binnenkort beschikbaar</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                { icon: "📊", name: "Woningwaarde Analyse", tier: "Plus" },
+                { icon: "📅", name: "Meerjarenonderhoudsplan (MJOP)", tier: "Plus" },
+                { icon: "🏠", name: "Verkoopgereed Dossier", tier: "Plus" },
+                { icon: "🏢", name: "VvE Rapportage Pakket", tier: "Premium" },
+              ].map((item) => (
+                <div key={item.name} className="flex items-center gap-3 bg-white rounded-xl p-3 border border-slate-100">
+                  <span className="text-lg">{item.icon}</span>
+                  <div>
+                    <p className="text-xs font-medium text-slate-600">{item.name}</p>
+                    <p className="text-xs text-slate-400">{item.tier}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       )}
     </ClientLayout>

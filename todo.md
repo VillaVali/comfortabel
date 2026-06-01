@@ -87,13 +87,29 @@
 - [x] TypeScript: geen fouten
 
 ## Fase 8: Woningpaspoort™ Uitbreiding (6 blokken)
-- [ ] Schema: Blok 2 velden — wozValue, wozYear, purchasePrice, purchaseYear, vveContribution, mortgageProvider, erfpachtCanon, insuranceExpiry
-- [ ] Schema: Blok 3 velden — ownershipType, kadastraleAanduiding, isMonument, hasErfpacht, bestemmingUrl, bestemmingCategory, hasBeslag
-- [ ] Schema: Blok 4 velden — foundationType, roofType, roofMaterial, wallType, heatingSystem, heatingYear, hotWaterSystem, hasSolarPanels, solarPanelCount, solarPanelYear, hasEVCharger, hasGasConnection, glazingType, wallInsulation, roofInsulation, floorInsulation
-- [ ] Schema: Blok 5 velden — targetEnergyLabel, gasVrijDoeljaar, sustainabilityMeasures, subsidiesApplied
-- [ ] Database migratie uitvoeren
-- [ ] Backend: properties.get en properties.update procedures uitbreiden
-- [ ] Admin PropertyDetail: 6 bewerkbare blokken als accordeon
-- [ ] Client paspoort-tab: volledig herbouwen met alle 6 blokken en tier-gating
-- [ ] Demo-data: Patrick Valpoort en Manon — alle blokken gevuld
+- [x] Schema: Blok 2 velden — wozValue, wozYear, purchasePrice, purchaseYear, vveContribution, mortgageProvider, erfpachtCanon, insuranceExpiry
+- [x] Schema: Blok 3 velden — ownershipType, kadastraleAanduiding, isMonument, hasErfpacht, bestemmingUrl, bestemmingCategory, hasBeslag
+- [x] Schema: Blok 4 velden — foundationType, roofType, roofMaterial, wallType, heatingSystem, heatingYear, hotWaterSystem, hasSolarPanels, solarPanelCount, solarPanelYear, hasEVCharger, hasGasConnection, glazingType, wallInsulation, roofInsulation, floorInsulation
+- [x] Schema: Blok 5 velden — targetEnergyLabel, gasVrijDoeljaar, sustainabilityMeasures, subsidiesApplied
+- [x] Database migratie uitgevoerd (38 nieuwe velden)
+- [x] Backend: properties.get en properties.update procedures uitgebreid
+- [x] Admin PropertyDetail: 5 bewerkbare tabbladen (Basisidentiteit, Waarde & Financieel, Juridisch & Omgeving, Technische Kenmerken, Verduurzaming)
+- [x] Client paspoort-tab: volledig herbouwd met alle 5 blokken en tier-gating
+- [x] Demo-data: Patrick Valpoort (Basis, tussenwoning 1965) en Manon (Digital, appartement 1987) — alle blokken gevuld
+- [x] TypeScript: geen fouten, 19 tests geslaagd
+
+## Fase 9: Product Roadmap + USP-features Implementatie
+
+### Roadmap document
+- [ ] Strategisch roadmap document: v1.0 lancering + groeifases per 25 abonnees
+- [ ] Feature-overzicht per abonnementstier (Free t/m Premium)
+- [ ] Technische implementatievolgorde vastgelegd
+
+### USP-features Implementatie (Laag 1)
+- [ ] Woningpaspoort™ PDF-download: HTML-naar-PDF rendering via Puppeteer
+- [ ] PDF-download knop in client portaal (paspoort-tab)
+- [ ] Verduurzamingsadvies rapport: LLM-gegenereerd op basis van paspoortdata
+- [ ] Subsidie Berekening rapport: LLM-gegenereerd met ISDE-kengetallen
+- [ ] Gratis deeplinks sectie: BAG, WOZ, EP-Online, Omgevingsloket, Kadaster, CBS
+- [ ] Downloads-tab in client portaal met overzicht van alle beschikbare downloads
 - [ ] TypeScript: geen fouten, alle tests slagen
