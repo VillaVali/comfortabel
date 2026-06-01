@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1778978946056,
+      "tag": "0000_supreme_demogoblin",
+      "breakpoints": true
+    }
+  ]
+}

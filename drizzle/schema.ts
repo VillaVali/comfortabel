@@ -1,0 +1,182 @@
+import {
+  boolean,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+  float,
+} from "drizzle-orm/mysql-core";
+
+// ─── Users (auth) ─────────────────────────────────────────────────────────────
+
+export const users = mysqlTable("users", {
+  id: int("id").autoincrement().primaryKey(),
+  // Legacy OAuth column — kept for DB compatibility, not used in new auth
+  openId: varchar("openId", { length: 64 }),
+  name: varchar("name", { length: 200 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  loginMethod: varchar("loginMethod", { length: 64 }),
+  passwordHash: varchar("passwordHash", { length: 255 }),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn"),
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+// ─── Customers (klanten) ──────────────────────────────────────────────────────
+
+export const customers = mysqlTable("customers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id),
+  type: mysqlEnum("type", ["particulier", "bedrijf", "vastgoed"]).default("particulier").notNull(),
+  firstName: varchar("firstName", { length: 100 }),
+  lastName: varchar("lastName", { length: 100 }),
+  companyName: varchar("companyName", { length: 200 }),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 30 }),
+  notes: text("notes"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  createdBy: int("createdBy").references(() => users.id),
+});
+
+export type Customer = typeof customers.$inferSelect;
+export type InsertCustomer = typeof customers.$inferInsert;
+
+// ─── Properties (woningen) ────────────────────────────────────────────────────
+
+export const properties = mysqlTable("properties", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customerId").notNull().references(() => customers.id),
+  street: varchar("street", { length: 200 }).notNull(),
+  houseNumber: varchar("houseNumber", { length: 20 }).notNull(),
+  postalCode: varchar("postalCode", { length: 10 }).notNull(),
+  city: varchar("city", { length: 100 }).notNull(),
+  buildYear: int("buildYear"),
+  propertyType: mysqlEnum("propertyType", [
+    "tussenwoning", "hoekwoning", "vrijstaand", "appartement", "bedrijfspand", "overig"
+  ]).default("tussenwoning"),
+  surfaceM2: int("surfaceM2"),
+  residents: int("residents"),
+  energyLabel: mysqlEnum("energyLabel", ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]),
+  subscriptionType: mysqlEnum("subscriptionType", [
+    "basis", "plus", "premium", "vve", "verhuur"
+  ]).default("basis"),
+  subscriptionActive: boolean("subscriptionActive").default(true).notNull(),
+  lastInspectionDate: timestamp("lastInspectionDate"),
+  nextInspectionDate: timestamp("nextInspectionDate"),
+  photoUrl: text("photoUrl"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Property = typeof properties.$inferSelect;
+export type InsertProperty = typeof properties.$inferInsert;
+
+// ─── Inspections / 0-metingen ─────────────────────────────────────────────────
+
+export const inspections = mysqlTable("inspections", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  performedBy: int("performedBy").references(() => users.id),
+  type: mysqlEnum("type", ["nulmeting", "jaarlijks", "tussentijds", "calamiteit"]).default("nulmeting").notNull(),
+  status: mysqlEnum("status", ["concept", "in_uitvoering", "afgerond"]).default("concept").notNull(),
+  inspectionDate: timestamp("inspectionDate").defaultNow().notNull(),
+  summary: text("summary"),
+  scoreInstallaties: int("scoreInstallaties"),
+  scoreBouwkundig: int("scoreBouwkundig"),
+  scoreVeiligheid: int("scoreVeiligheid"),
+  scoreVochtVentilatie: int("scoreVochtVentilatie"),
+  scoreEnergie: int("scoreEnergie"),
+  totalScore: int("totalScore"),
+  woningGrade: mysqlEnum("woningGrade", ["A", "B", "C", "D", "E"]),
+  pdfUrl: text("pdfUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Inspection = typeof inspections.$inferSelect;
+export type InsertInspection = typeof inspections.$inferInsert;
+
+// ─── Inspection Items (checklist antwoorden) ──────────────────────────────────
+
+export const inspectionItems = mysqlTable("inspectionItems", {
+  id: int("id").autoincrement().primaryKey(),
+  inspectionId: int("inspectionId").notNull().references(() => inspections.id),
+  category: varchar("category", { length: 100 }).notNull(),
+  subcategory: varchar("subcategory", { length: 100 }),
+  question: text("question").notNull(),
+  answer: mysqlEnum("answer", ["goed", "aandacht", "urgent", "nvt", "onbekend"]).default("onbekend"),
+  notes: text("notes"),
+  photoUrl: text("photoUrl"),
+  sortOrder: int("sortOrder").default(0),
+});
+
+export type InspectionItem = typeof inspectionItems.$inferSelect;
+export type InsertInspectionItem = typeof inspectionItems.$inferInsert;
+
+// ─── Maintenance Issues (onderhoudspunten) ────────────────────────────────────
+
+export const maintenanceIssues = mysqlTable("maintenanceIssues", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  inspectionId: int("inspectionId").references(() => inspections.id),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  priority: mysqlEnum("priority", ["laag", "normaal", "hoog", "urgent"]).default("normaal").notNull(),
+  status: mysqlEnum("status", ["open", "in_behandeling", "gepland", "afgerond"]).default("open").notNull(),
+  dueDate: timestamp("dueDate"),
+  resolvedAt: timestamp("resolvedAt"),
+  estimatedCost: float("estimatedCost"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type MaintenanceIssue = typeof maintenanceIssues.$inferSelect;
+export type InsertMaintenanceIssue = typeof maintenanceIssues.$inferInsert;
+
+// ─── Maintenance Planning (toekomstig onderhoud) ──────────────────────────────
+
+export const maintenancePlanning = mysqlTable("maintenancePlanning", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  title: varchar("title", { length: 300 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }),
+  plannedYear: int("plannedYear"),
+  horizon: mysqlEnum("horizon", ["1jaar", "3jaar", "5jaar", "10jaar", "mjop"]).default("3jaar"),
+  estimatedCost: float("estimatedCost"),
+  status: mysqlEnum("status", ["gepland", "uitgevoerd", "uitgesteld"]).default("gepland").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type MaintenancePlanning = typeof maintenancePlanning.$inferSelect;
+export type InsertMaintenancePlanning = typeof maintenancePlanning.$inferInsert;
+
+// ─── Documents (documenten) ───────────────────────────────────────────────────
+
+export const documents = mysqlTable("documents", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").references(() => properties.id),
+  inspectionId: int("inspectionId").references(() => inspections.id),
+  type: mysqlEnum("type", ["rapport", "offerte", "factuur", "keuring", "foto", "overig"]).default("overig"),
+  title: varchar("title", { length: 300 }).notNull(),
+  fileUrl: text("fileUrl").notNull(),
+  fileKey: text("fileKey"),
+  mimeType: varchar("mimeType", { length: 100 }),
+  uploadedBy: int("uploadedBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Document = typeof documents.$inferSelect;
+export type InsertDocument = typeof documents.$inferInsert;

@@ -1,0 +1,42 @@
+{
+  "build_command": "pnpm run build",
+  "capabilities": [
+    "db",
+    "server",
+    "user"
+  ],
+  "dev_command": "pnpm run dev",
+  "env_vars": {
+    "DATABASE_URL": "mysql://38xHAcZgNcaAqrC.root:w4mF3Z03zMefBQ2S0WjV@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/EcqZoeZBDfq7Q9anJ42mDR?ssl={\"rejectUnauthorized\":true}",
+    "DRIZZLE_DATABASE_URL": "mysql://38xHAcZgNcaAqrC.root:w4mF3Z03zMefBQ2S0WjV@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/EcqZoeZBDfq7Q9anJ42mDR?ssl={\"rejectUnauthorized\":true}"
+  },
+  "experiments": null,
+  "git_remote": {
+    "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663661424363/EcqZoeZBDfq7Q9anJ42mDR",
+    "access_key_id": "ASIAZV3A2ECZBK62VCFR",
+    "secret_access_key": "OvLvSJnt3xbVMo1l9myROEtm/bYCfTckbs/XLSw+",
+    "session_token": "IQoJb3JpZ2luX2VjENH//////////wEaCXVzLWVhc3QtMSJIMEYCIQC+kMFY1S6EgIUibdIMHErZoPSlBXvgfJ1QtKmZ9vj9YQIhALzVLNeItIHqQ/m34MXM8fN8dttmdyKNPZbovZAp4v76Kv8DCJr//////////wEQBBoMNjY1Mzg2MDk4ODY2IgwNBkkA2TjAE9zp1gcq0wOH19vBHWXFbN5YkCADHDdLCd75GaMzc5rA48pgjBJaqbPQteEKuRUoHSPj6zLL9gqyT76RdZo0gKqMVTQflmJOvAiOW+seWlvN/ZkNI5zPLWWZu6p3VjCLZWcMJ1jvpqYPIzDrD4UdOQKxlnCt2SYN0VMKrzKjGaW2odRNCm1C+yCjM5r0GAD7lO7QUQt6mByhzKKSJeEkG70qposBKzDw7LEA34SGcUCOywIe3y/z350azAypl3qhoS/MJgx2zWodK1vi6kyflex3MjtV+IIE108ZAWUyDpMzhDB36jKwizxYWOtBct46zjuqf1kq6gySSU2AeUEk0QCv0DPwkuj0Yix8e+bci78dhIncwmWt9ZTl80yaexiSwM41dIU1aJqim3ow+Dpmr45Zef61DNBPVzCzx8Xhto6yf3NQry+0uS1NOQ0BmWQ4CNh/UfaApOjb9p7aQKBtPr4u9LRXeBha1sxBjT9F385a/NUi7PQxl3DfEqn5nhWCR6HRiaOg4WaVL/5TlnCcWcMvIqCBCOAwB2BBiUcUgpTf2YNMUVdbA2ZIJVAFIlwkxt0qbnEisWtEGjEwadbPyzGrdiJuHECpFEdYC1KKMFy5B3J7rTM2qchMkDCUoKTQBjqcAc7nH5yxX4wt/r5qPtWO3sPCBmjJ3lmEVQt6sMEmHuyolbLrngG+ZUPLK7gEC5ym//BGiTyuGNRu5B6EcBukGZLhxk5p6GXhPQIPkbca48ko5fru5APOh0XZxsqELuCzA2/OKU3HcmwpRFSXJCjEMimKE6CwkRYzdArKcOntdKIPAgfqtI6FndFsicbgGy+CT43oUMSbmoqujL68Lw==",
+    "expiration": "2026-05-17T12:47:16.000Z"
+  },
+  "name": "mijncomfortabel",
+  "path": "/home/ubuntu/mijncomfortabel",
+  "port": 3000,
+  "secrets": {
+    "BUILT_IN_FORGE_API_KEY": "eSaEfgS2SXLGFYmm9RQbjf",
+    "BUILT_IN_FORGE_API_URL": "https://forge.manus.ai",
+    "JWT_SECRET": "9bqVTCAzb87ePFgF5bFeYh",
+    "OAUTH_SERVER_URL": "https://api.manus.im",
+    "OWNER_NAME": "Patrick Valpoort",
+    "OWNER_OPEN_ID": "DZg6YExN8rYkWnvViX9qeF",
+    "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
+    "VITE_ANALYTICS_WEBSITE_ID": "00c8cfeb-c917-4b05-b921-fcb1c0481c65",
+    "VITE_APP_ID": "EcqZoeZBDfq7Q9anJ42mDR",
+    "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663661424363/AmOONbBFRYfNeOuv.png",
+    "VITE_APP_TITLE": "MijnComfortabel — Grip op je woning. Rust in je hoofd.",
+    "VITE_FRONTEND_FORGE_API_KEY": "FiBAn7rcpMGB34EKocdyZP",
+    "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
+    "VITE_OAUTH_PORTAL_URL": "https://manus.im"
+  },
+  "template_id": "web-static",
+  "test_command": "pnpm test"
+}
