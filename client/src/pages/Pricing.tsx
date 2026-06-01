@@ -101,7 +101,7 @@ export default function Pricing() {
                     <span className="text-3xl font-bold text-white">Gratis</span>
                   ) : (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-white">€{price}</span>
+                      <span className="text-3xl font-bold text-white">€{Number.isInteger(price) ? price : price.toFixed(2).replace(".", ",")}</span>
                       <span className="text-white/50 text-sm">/mnd</span>
                     </div>
                   )}
@@ -150,7 +150,7 @@ export default function Pricing() {
                       <span className="text-white/50 text-xs">
                         {SUBSCRIPTION_PRICES[tier] === 0
                           ? "Gratis"
-                          : `€${SUBSCRIPTION_PRICES[tier]}/mnd`}
+                          : `€${Number.isInteger(SUBSCRIPTION_PRICES[tier]) ? SUBSCRIPTION_PRICES[tier] : SUBSCRIPTION_PRICES[tier].toFixed(2).replace(".", ",")}/mnd`}
                       </span>
                     </div>
                   </th>

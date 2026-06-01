@@ -195,7 +195,7 @@ export default function Home() {
                     <span className="text-2xl font-bold text-white">Gratis</span>
                   ) : (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-2xl font-bold text-white">&euro;{price}</span>
+                      <span className="text-2xl font-bold text-white">&euro;{Number.isInteger(price) ? price : price.toFixed(2).replace(".", ",")}</span>
                       <span className="text-white/50 text-xs">/mnd</span>
                     </div>
                   )}

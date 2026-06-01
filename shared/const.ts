@@ -20,10 +20,10 @@ export const SUBSCRIPTION_LABELS: Record<SubscriptionTier, string> = {
 
 export const SUBSCRIPTION_PRICES: Record<SubscriptionTier, number> = {
   free: 0,
-  digital: 9,
-  basis: 19,
-  plus: 39,
-  premium: 79,
+  digital: 9.95,
+  basis: 39.95,
+  plus: 89,
+  premium: 129,
 };
 
 export const SUBSCRIPTION_COLORS: Record<SubscriptionTier, string> = {
