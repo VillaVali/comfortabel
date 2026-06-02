@@ -203,3 +203,75 @@ export function sendReportReadyEmail({
     text: `Hallo ${name},\n\nUw ${reportType} voor ${propertyAddress} is klaar.\n\nDownload via: ${downloadUrl}\n\nMijnComfortabel`,
   });
 }
+
+// ── Template: welkomstmail nieuwe gebruiker ────────────────────────────────────
+export function sendWelcomeEmail({
+  to,
+  name,
+  loginUrl,
+}: {
+  to: string;
+  name: string;
+  loginUrl: string;
+}) {
+  const html = emailWrapper(`
+    <h2 style="margin:0 0 8px;color:#1E3A5F;font-size:22px;font-weight:700;">Welkom bij MijnComfortabel!</h2>
+    <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
+      Hallo ${name},<br/><br/>
+      Uw account is succesvol aangemaakt. U kunt nu inloggen op uw persoonlijk woningportaal.
+    </p>
+    <p style="margin:0 0 20px;color:#475569;font-size:14px;line-height:1.6;">
+      Via het portaal heeft u toegang tot uw Woningpaspoort™, onderhoudspunten, documenten en de AI Huismeester.
+    </p>
+    <div style="text-align:center;margin:28px 0;">
+      <a href="${loginUrl}" style="display:inline-block;background:#1E3A5F;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:8px;text-decoration:none;">
+        Naar mijn portaal
+      </a>
+    </div>
+    <p style="margin:20px 0 0;color:#94a3b8;font-size:12px;line-height:1.6;">
+      Heeft u vragen? Neem contact op via <a href="mailto:info@comfortabel.nl" style="color:#1E3A5F;">info@comfortabel.nl</a>.
+    </p>
+  `);
+
+  return sendEmail({
+    to,
+    subject: "Welkom bij MijnComfortabel — uw portaal is klaar",
+    html,
+    text: `Hallo ${name},\n\nUw account is aangemaakt. Log in via:\n${loginUrl}\n\nMijnComfortabel`,
+  });
+}
+
+// ── Template: admin notificatie nieuwe registratie ─────────────────────────────
+export function sendAdminNewUserEmail({
+  adminEmail,
+  userName,
+  userEmail,
+  registeredAt,
+}: {
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  registeredAt: string;
+}) {
+  const html = emailWrapper(`
+    <h2 style="margin:0 0 8px;color:#1E3A5F;font-size:22px;font-weight:700;">Nieuwe registratie</h2>
+    <p style="margin:0 0 16px;color:#475569;font-size:15px;line-height:1.6;">
+      Er heeft zich een nieuwe gebruiker aangemeld op MijnComfortabel.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
+      <tr><td style="padding:8px 0;color:#94a3b8;font-size:13px;width:120px;">Naam</td><td style="padding:8px 0;color:#1E3A5F;font-size:14px;font-weight:600;">${userName}</td></tr>
+      <tr><td style="padding:8px 0;color:#94a3b8;font-size:13px;">E-mail</td><td style="padding:8px 0;color:#1E3A5F;font-size:14px;">${userEmail}</td></tr>
+      <tr><td style="padding:8px 0;color:#94a3b8;font-size:13px;">Tijdstip</td><td style="padding:8px 0;color:#475569;font-size:13px;">${registeredAt}</td></tr>
+    </table>
+    <p style="margin:0 0 0;color:#94a3b8;font-size:12px;">
+      Beheer gebruikers via het admin dashboard.
+    </p>
+  `);
+
+  return sendEmail({
+    to: adminEmail,
+    subject: `Nieuwe registratie: ${userName} — MijnComfortabel`,
+    html,
+    text: `Nieuwe registratie:\nNaam: ${userName}\nE-mail: ${userEmail}\nTijdstip: ${registeredAt}\n\nMijnComfortabel`,
+  });
+}

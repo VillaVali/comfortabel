@@ -5,7 +5,7 @@ import { users, passwordResetTokens } from "../drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { createSessionToken, verifySessionToken, COOKIE_NAME } from "./context";
-import { sendPasswordResetEmail } from "./email";
+import { sendPasswordResetEmail, sendWelcomeEmail, sendAdminNewUserEmail } from "./email";
 
 export const authRouter = Router();
 
@@ -129,15 +129,37 @@ authRouter.post("/register", async (req, res) => {
       }
     } else {
       // No invite — create a new customer record linked to this user
-      await db.insert(customers).values({
-        userId,
-        email: email.toLowerCase().trim(),
-        firstName: name.trim().split(" ")[0] || name.trim(),
-        lastName: name.trim().split(" ").slice(1).join(" ") || null,
-        type: "particulier",
-        createdBy: userId,
-      });
+      try {
+        await db.insert(customers).values({
+          userId,
+          email: email.toLowerCase().trim(),
+          firstName: name.trim().split(" ")[0] || name.trim(),
+          lastName: name.trim().split(" ").slice(1).join(" ") || null,
+          type: "particulier",
+          // createdBy omitted for self-registration (no admin context)
+        });
+        console.log(`[Auth] Customer record created for user ${userId}`);
+      } catch (customerErr) {
+        console.error(`[Auth] Failed to create customer for user ${userId}:`, customerErr);
+        // Don't fail registration if customer creation fails
+      }
     }
+
+    // Send welcome email to new user
+    const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
+    const loginUrl = `${origin}/inloggen`;
+    sendWelcomeEmail({ to: email.toLowerCase().trim(), name: name.trim(), loginUrl }).catch((err) =>
+      console.error(`[Auth] Welcome email failed for ${email}:`, err)
+    );
+
+    // Notify admin about new registration
+    const adminEmail = process.env.ADMIN_EMAIL || "info@villavali.nl";
+    sendAdminNewUserEmail({
+      adminEmail,
+      userName: name.trim(),
+      userEmail: email.toLowerCase().trim(),
+      registeredAt: new Date().toLocaleString("nl-NL", { timeZone: "Europe/Amsterdam" }),
+    }).catch((err) => console.error(`[Auth] Admin notification failed:`, err));
 
     // Auto-login: create session
     const token = await createSessionToken(userId);
