@@ -287,3 +287,19 @@ export const aiChatUsage = mysqlTable("aiChatUsage", {
 
 export type AiChatUsage = typeof aiChatUsage.$inferSelect;
 export type InsertAiChatUsage = typeof aiChatUsage.$inferInsert;
+
+// ─── Invitations (klant uitnodigingen) ────────────────────────────────────────
+
+export const invitations = mysqlTable("invitations", {
+  id: int("id").autoincrement().primaryKey(),
+  customerId: int("customerId").notNull().references(() => customers.id),
+  email: varchar("email", { length: 320 }).notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  invitedBy: int("invitedBy").references(() => users.id),
+  acceptedAt: timestamp("acceptedAt"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Invitation = typeof invitations.$inferSelect;
+export type InsertInvitation = typeof invitations.$inferInsert;

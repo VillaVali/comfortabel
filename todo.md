@@ -179,3 +179,20 @@
 - [x] Abonnementen overzicht widget: actieve woningen per tier + geschatte MRR
 - [x] Tests: 27 vitest tests geslaagd (inclusief AI quota tests)
 - [x] TypeScript: geen fouten
+
+## Fase 12: Resend E-mail Integratie
+
+- [ ] Resend API key valideren via test
+- [ ] E-mail helper server/email.ts bouwen (sendEmail wrapper via Resend)
+- [ ] E-mail template: wachtwoord reset (HTML + tekst)
+- [ ] E-mail template: klant uitnodiging portaal (HTML + tekst)
+- [ ] Wachtwoord reset flow: daadwerkelijk e-mail versturen via Resend
+- [ ] Klant uitnodiging: admin kan e-mail sturen naar klant met portaallink
+- [ ] Backend: invitations tabel + invite procedure
+- [ ] Frontend: uitnodigingsknop in admin klantdetail
+- [ ] Overige Fase 3: foto's uploaden bij onderhoudspunten
+- [ ] Overige Fase 3: notificaties bij urgente onderhoudspunten
+- [ ] Overige Fase 3: exporteer klantlijst als CSV
+- [ ] Overige Fase 3: abonnementsbeheer per woning (upgrade/downgrade UI)
+- [ ] Tests: Resend integratie valideren
+- [ ] TypeScript: geen fouten

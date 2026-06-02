@@ -7,17 +7,18 @@
   ],
   "dev_command": "pnpm run dev",
   "env_vars": {
-    "DATABASE_URL": "mysql://38xHAcZgNcaAqrC.ecc12d2c92ab:8DOS5TSVP8F41td7ZaGs@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/a8mtKNzoQHQb2xC9nTShme?ssl={\"rejectUnauthorized\":true}"
+    "DATABASE_URL": "mysql://38xHAcZgNcaAqrC.ecc12d2c92ab:8DOS5TSVP8F41td7ZaGs@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/a8mtKNzoQHQb2xC9nTShme?ssl={\"rejectUnauthorized\":true}",
+    "DRIZZLE_DATABASE_URL": "mysql://38xHAcZgNcaAqrC.ecc12d2c92ab:8DOS5TSVP8F41td7ZaGs@gateway06.us-east-1.prod.aws.tidbcloud.com:4000/a8mtKNzoQHQb2xC9nTShme?ssl={\"rejectUnauthorized\":true}"
   },
   "experiments": [
     "no_db_push"
   ],
   "git_remote": {
     "repo_url": "s3://vida-prod-gitrepo/webdev-git/310519663661424363/a8mtKNzoQHQb2xC9nTShme",
-    "access_key_id": "ASIAZV3A2ECZIE32HRRY",
-    "secret_access_key": "tAZdzkFA7URD/eAkPt7LVxL08oAMRpzLVQfompGJ",
-    "session_token": "IQoJb3JpZ2luX2VjEEAaCXVzLWVhc3QtMSJHMEUCIQCE+UxyRdZjC6GkSLSymv7bIQYRLFF/wTlu+/cHlMQClAIgXXhEW+/M/X4D3MDyCEg0BAb4KsUNtqKu/9U5cupMaKcq9gMICBAEGgw2NjUzODYwOTg4NjYiDNnUCHWnAVhPqL7XSSrTAxK3kHxPJ2RTBfHZrQIe02WX/hx45qtbY+EIZ1OKP3mhoJCWNMOp374KycdxvtPFi4BKL55XBIg6AkmOQESbhU0jgYkHLqPXr9mlumrpqX1cq4Ik0jrMbwvZF6BjSV2N/WkEF4NHJiv/U5LOpy/jXqnxD7RRG/w8V8UzMMdQwdf/+ozIno0YrZPuZvCFYdF63fSODIN2tNh7UyO4dU9dSzqs3ZFCYAe5Pipq6rGCl67MY35bZMfnaW+ymd4cz3Mi7hfnupLFVOHMhYUxCdw3rJLxz2MTtFu8ajhtuYtP0HuiJdICPBuIim3/ioQE4n+LQg3GvVzlR3qZaqcvoVsecU6rIQJOg+BUIUM58NRawXXD1/3jDmm3rgeQGDgSWeDGnIJ912fFxXuE8uCwc7Kal/7mlQjM6ciZ5ieLKXH5oq3Oq5iX9ZPeL9z0Z5R0MvPyPwKBU16ijNC7oW4jDbIFQOLZfHjk5sNgw16Q2OfmhKXdiaTe0yzMpSI++5ddgNVv0jp0Wyr1H2advw5Bs+v/hpCgUSCdaYNqnrmPAVDnHUHVjvkD1lP+QJLxWmHDoMRNNEoCqntjuDRU+KJg7n4M2HoNXQqisZA3t3mladJWT/iOs/GSMK3k9NAGOp0BlkvSyHbSFQZTmcE9fsx3k/W6r76FlHUVhN71NVknUIpTevZG9IYw70TMgL/EKHBpWFwDY0cQNAzZH0tlOgLnMqjZeLr6Yzph+XjYAjZzBTRs9K+8kwd2NRWT/63o8RvfyzRVjUvDyNL7fa0ypwb92Od37gYRfWTTxMdqq596WCNeBlzZcrT5xAjEGOqauijECNvWOJXbWkPd3bDqgA==",
-    "expiration": "2026-06-01T19:18:05.000Z"
+    "access_key_id": "ASIAZV3A2ECZMQZEM2WN",
+    "secret_access_key": "lbFjT3xYEKJ5wq1YNjrcvaOoYc8lGLFXxd5ckV0C",
+    "session_token": "IQoJb3JpZ2luX2VjEGYaCXVzLWVhc3QtMSJGMEQCIHm0H9vkGKGql8k08RMTjNcXuBI2xaCxh714e+1fZ2tUAiA2o/klLPudK/4pzTQM9itH1a/0MGVkrm5e4IT410s/zir2AwguEAQaDDY2NTM4NjA5ODg2NiIMwZMLFQMU4fbDvpJsKtMDHW2MyDgq9vZViDWZpPzndO/Th+lnVkubGlCAidLvzWd1bfU8SZddBHk5sHDSeRVxf4oumHcVkBwWScluMqHJRpVp+w8hqj8TZyCH8jPtykz/c5FMaMwNe9w+pw9tr+LQP0S6d29Oo5xI9AsvBg//XiVz1BtABVJatUPCw1S2lbcxxSGjjJGCTz2Qm9+Q7Zs0MlajqQRi9iIhSJ2jBchCgLznvya8VK7uJNGwTj2Lpg9PqBsDHEQ3xn/CcpqncPskol7sxaWw4sNLz2VrL7R6ggPQzJ3n3hnti4ufZEkFCaszR1GoiXse1gLrVuVapFc7N+Crtq+uHuMnWkv3dQUzWG+80/EdDJeRksk3UwvvZVKPnH8j/ld1zSWE0CoJPtBGFZjYAXBLBPpCkJMkEysRC+MyH60WfIGtahd/xslwbj+vO4gOe/7Hf5QQsCAEK+9Ozz/O91kU9wMleZx5nBmb17YebQ5z1YwfKYQ2FLYCjVyKJILJSR7n7XeNLFDsepPkBguozV2zvst/t9CtyLGGf32gUrHCnxvF5rpwdkR5XcldEeW3GS8cLOcYJK5KpXEWjmnR84HFNJfVEAdRruPptnGG6bQYBJpdhX0LoYGMxbHSM7Yw6Yz90AY6ngE2VfsmNh+DtLZuWohidG79WcNT+vadhfyFASPqmii983pGBRJ0rfYPaeAsG7KxsMyDnlMpoZ0oRpGaMJMxSQeR8YjN0iB76Kg8QnAzfxPo9K8I5HHmNaMcH7boegshqvy3ElYUwCP8cm5RGuGRQ74fuMXjlvFbjfpNSGXOcfBg9SS2xMvRI67AQAIA8+T6rtgFOZ2E1CxIaA7jWm+92g==",
+    "expiration": "2026-06-03T09:08:57.000Z"
   },
   "name": "copy-of-mijncomfortabel-—-grip-op-je-woning.-rust-in-je-hoofd.",
   "path": "/home/ubuntu/copy-of-mijncomfortabel-—-grip-op-je-woning.-rust-in-je-hoofd.",
@@ -29,11 +30,12 @@
     "OAUTH_SERVER_URL": "https://api.manus.im",
     "OWNER_NAME": "Patrick Valpoort",
     "OWNER_OPEN_ID": "6UY76awHsxtNuVcYv3cgyq",
+    "RESEND_API_KEY": "re_a8d63Hxc_JcfF6YW5jifdfzKepfhVkgJQ",
     "VITE_ANALYTICS_ENDPOINT": "https://manus-analytics.com",
     "VITE_ANALYTICS_WEBSITE_ID": "71f6cf7e-a494-4f68-9c68-61ba53c76ab1",
     "VITE_APP_ID": "a8mtKNzoQHQb2xC9nTShme",
-    "VITE_APP_LOGO": "",
-    "VITE_APP_TITLE": "Copy of MijnComfortabel — Grip op je woning. Rust in je hoofd.",
+    "VITE_APP_LOGO": "https://files.manuscdn.com/user_upload_by_module/web_dev_logo/310519663661424363/bLNkumxDOigFNWpN.png",
+    "VITE_APP_TITLE": "Comfortabel 1.0",
     "VITE_FRONTEND_FORGE_API_KEY": "WyoRs4sK7ba8HinQBTknP9",
     "VITE_FRONTEND_FORGE_API_URL": "https://forge.manus.ai",
     "VITE_OAUTH_PORTAL_URL": "https://manus.im"

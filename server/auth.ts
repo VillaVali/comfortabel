@@ -5,6 +5,7 @@ import { users, passwordResetTokens } from "../drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { randomBytes } from "crypto";
 import { createSessionToken, verifySessionToken, COOKIE_NAME } from "./context";
+import { sendPasswordResetEmail } from "./email";
 
 export const authRouter = Router();
 
@@ -177,12 +178,24 @@ authRouter.post("/forgot-password", async (req, res) => {
     const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
     const resetUrl = `${origin}/wachtwoord-reset?token=${token}`;
 
-    // Log the reset URL to server console (admin can copy and share)
-    console.log(`[Auth] Password reset for ${user.email}: ${resetUrl}`);
+    // Send reset email via Resend
+    const emailResult = await sendPasswordResetEmail({
+      to: user.email,
+      name: user.name || user.email,
+      resetUrl,
+    });
+
+    if (!emailResult.success) {
+      console.error(`[Auth] Failed to send reset email to ${user.email}:`, emailResult.error);
+      // Still log the URL as fallback
+      console.log(`[Auth] Password reset URL for ${user.email}: ${resetUrl}`);
+    } else {
+      console.log(`[Auth] Password reset email sent to ${user.email}`);
+    }
 
     return res.json({
       success: true,
-      message: "Resetlink aangemaakt. Neem contact op met de beheerder om de link te ontvangen.",
+      message: "Als dit e-mailadres bekend is, ontvangt u een e-mail met een resetlink.",
       // In development, expose the token for testing
       ...(process.env.NODE_ENV === "development" ? { resetUrl } : {}),
     });

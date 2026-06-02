@@ -14,7 +14,9 @@ import {
   maintenanceIssues,
   maintenancePlanning,
   documents,
+  invitations,
 } from "../drizzle/schema";
+import { sendInvitationEmail } from "./email";
 import { eq, desc, and, asc } from "drizzle-orm";
 
 const t = initTRPC.context<TrpcContext>().create({ transformer: superjson });
@@ -809,6 +811,80 @@ const subscriptionsRouter = t.router({
   }),
 });
 
+// ─── Invitations router ─────────────────────────────────────────────────────
+
+const invitationsRouter = t.router({
+  // Send invitation email to a customer
+  send: adminProcedure
+    .input(z.object({
+      customerId: z.number(),
+      origin: z.string(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      // Get customer
+      const customerRows = await db.select().from(customers).where(eq(customers.id, input.customerId)).limit(1);
+      const customer = customerRows[0];
+      if (!customer) throw new TRPCError({ code: "NOT_FOUND", message: "Klant niet gevonden" });
+
+      // Get first property for address
+      const propertyRows = await db.select({
+        street: properties.street,
+        houseNumber: properties.houseNumber,
+        city: properties.city,
+      }).from(properties).where(eq(properties.customerId, input.customerId)).limit(1);
+      const property = propertyRows[0];
+      const propertyAddress = property
+        ? `${property.street} ${property.houseNumber}, ${property.city}`
+        : undefined;
+
+      // Generate invite token (valid 7 days)
+      const { randomBytes } = await import("crypto");
+      const token = randomBytes(48).toString("hex");
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      await db.insert(invitations).values({
+        customerId: input.customerId,
+        email: customer.email,
+        token,
+        invitedBy: ctx.user.id,
+        expiresAt,
+      });
+
+      const inviteUrl = `${input.origin}/registreren?invite=${token}`;
+      const customerName = customer.type === "bedrijf" || customer.type === "vastgoed"
+        ? (customer.companyName || customer.email)
+        : `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.email;
+
+      const emailResult = await sendInvitationEmail({
+        to: customer.email,
+        name: customerName,
+        inviteUrl,
+        propertyAddress,
+        invitedBy: ctx.user.name || "Comfortabel",
+      });
+
+      return {
+        success: true,
+        emailSent: emailResult.success,
+        inviteUrl,
+      };
+    }),
+
+  // List invitations for a customer
+  listByCustomer: adminProcedure
+    .input(z.object({ customerId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return db.select().from(invitations)
+        .where(eq(invitations.customerId, input.customerId))
+        .orderBy(desc(invitations.createdAt));
+    }),
+});
+
 // ─── App router ───────────────────────────────────────────────────────────────
 
 export const appRouter = t.router({
@@ -820,6 +896,7 @@ export const appRouter = t.router({
   users: usersRouter,
   documents: documentsRouter,
   subscriptions: subscriptionsRouter,
+  invitations: invitationsRouter,
 });
 
 export type AppRouter = typeof appRouter;

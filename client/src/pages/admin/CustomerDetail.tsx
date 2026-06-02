@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import AdminLayout from "../../components/AdminLayout";
 import { trpc } from "../../lib/trpc";
 import { toast } from "sonner";
-import { Home, Plus, X, ArrowRight, Link, User } from "lucide-react";
+import { Home, Plus, X, ArrowRight, Link, User, Mail, CheckCircle2, Clock } from "lucide-react";
 
 interface PropertyForm {
   street: string;
@@ -55,6 +55,20 @@ export default function AdminCustomerDetail() {
       toast.success("Gebruiker gekoppeld");
       setShowLinkModal(false);
       refetchCustomer();
+    },
+    onError: (e) => toast.error(e.message),
+  });
+
+  const { data: invitationList = [], refetch: refetchInvitations } = trpc.invitations.listByCustomer.useQuery({ customerId });
+
+  const sendInvitation = trpc.invitations.send.useMutation({
+    onSuccess: (data) => {
+      if (data.emailSent) {
+        toast.success("Uitnodiging verstuurd naar " + customer?.email);
+      } else {
+        toast.success("Uitnodiging aangemaakt (e-mail kon niet worden verstuurd)");
+      }
+      refetchInvitations();
     },
     onError: (e) => toast.error(e.message),
   });
@@ -143,7 +157,7 @@ export default function AdminCustomerDetail() {
             )}
           </div>
 
-          {/* Linked user */}
+          {/* Linked user + Invitation */}
           <div className="bg-white rounded-xl border border-slate-200 p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-medium text-slate-800 text-sm">Portaal toegang</h3>
@@ -156,7 +170,7 @@ export default function AdminCustomerDetail() {
               </button>
             </div>
             {linkedUser ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mb-3">
                 <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">
                   {(linkedUser.name || "?").charAt(0)}
                 </div>
@@ -166,12 +180,47 @@ export default function AdminCustomerDetail() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-3">
+              <div className="text-center py-2 mb-3">
                 <User className="w-6 h-6 text-slate-200 mx-auto mb-1" />
                 <p className="text-xs text-slate-400">Geen gebruiker gekoppeld</p>
-                <p className="text-xs text-slate-400">Klant kan nog niet inloggen</p>
               </div>
             )}
+
+            {/* Invitation section */}
+            <div className="border-t border-slate-100 pt-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-slate-600">Uitnodigingen</p>
+                <button
+                  onClick={() => sendInvitation.mutate({ customerId, origin: window.location.origin })}
+                  disabled={sendInvitation.isPending}
+                  className="flex items-center gap-1 text-xs bg-[#C9A84C] text-white px-2.5 py-1 rounded-lg hover:bg-[#b8923e] transition-colors disabled:opacity-60"
+                >
+                  <Mail className="w-3 h-3" />
+                  {sendInvitation.isPending ? "Versturen..." : "Uitnodiging sturen"}
+                </button>
+              </div>
+              {invitationList.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-1">Nog geen uitnodigingen verstuurd</p>
+              ) : (
+                <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                  {invitationList.slice(0, 5).map((inv) => (
+                    <div key={inv.id} className="flex items-center gap-2 text-xs">
+                      {inv.acceptedAt ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                      ) : (
+                        <Clock className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                      )}
+                      <span className="text-slate-500 truncate">
+                        {inv.acceptedAt ? "Geaccepteerd" : "In afwachting"}
+                      </span>
+                      <span className="text-slate-400 ml-auto flex-shrink-0">
+                        {new Date(inv.createdAt).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

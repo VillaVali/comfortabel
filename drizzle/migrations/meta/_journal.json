@@ -43,6 +43,13 @@
       "when": 1780429914683,
       "tag": "0005_smooth_fabian_cortez",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1780434699939,
+      "tag": "0006_cooing_random",
+      "breakpoints": true
     }
   ]
 }

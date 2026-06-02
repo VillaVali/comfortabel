@@ -2,7 +2,7 @@ import { useState } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { trpc } from "../../lib/trpc";
 import { toast } from "sonner";
-import { Plus, Search, ArrowRight, X, Users } from "lucide-react";
+import { Plus, Search, ArrowRight, X, Users, Download } from "lucide-react";
 
 type CustomerType = "particulier" | "bedrijf" | "vastgoed";
 
@@ -79,13 +79,43 @@ export default function AdminCustomers() {
             className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 w-64"
           />
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-[#1E3A5F] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2a4f7a] transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Nieuwe klant
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const rows = [
+                ["Naam", "E-mail", "Type", "Telefoon", "Status"],
+                ...customers.map((c) => [
+                  c.type === "bedrijf" || c.type === "vastgoed"
+                    ? (c.companyName || "")
+                    : `${c.firstName || ""} ${c.lastName || ""}`.trim(),
+                  c.email,
+                  c.type,
+                  c.phone || "",
+                  c.isActive ? "Actief" : "Inactief",
+                ]),
+              ];
+              const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+              const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `klanten-${new Date().toISOString().slice(0, 10)}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+            className="flex items-center gap-2 border border-slate-200 text-slate-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            CSV
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-[#1E3A5F] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#2a4f7a] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Nieuwe klant
+          </button>
+        </div>
       </div>
 
       {/* Table */}
