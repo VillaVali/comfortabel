@@ -52,9 +52,12 @@ export default function AdminLayout({ children, title }: { children: React.React
   const SidebarContent = () => (
     <>
       <div className="p-6 border-b border-white/10">
-        <div className="flex items-center gap-2 mb-1">
-          <Building2 className="w-6 h-6 text-[#C9A84C]" />
-          <span className="font-bold text-lg tracking-tight">MijnComfortabel</span>
+        <div className="flex items-center mb-1">
+          <img
+            src="/manus-storage/comfortabel-logo_8c90d4c3.png"
+            alt="Comfortabel"
+            className="h-8 w-auto object-contain brightness-0 invert"
+          />
         </div>
         <span className="text-xs text-white/50 uppercase tracking-widest">Beheer</span>
       </div>
@@ -144,9 +147,12 @@ export default function AdminLayout({ children, title }: { children: React.React
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2 flex-1">
-            <Building2 className="w-5 h-5 text-[#C9A84C]" />
-            <span className="font-bold text-sm">{title || "MijnComfortabel"}</span>
+          <div className="flex items-center flex-1">
+            <img
+              src="/manus-storage/comfortabel-logo_8c90d4c3.png"
+              alt="Comfortabel"
+              className="h-7 w-auto object-contain brightness-0 invert"
+            />
           </div>
           <div className="w-8 h-8 rounded-full bg-[#C9A84C] flex items-center justify-center text-[#1E3A5F] font-bold text-xs">
             {user?.name?.charAt(0) || "A"}

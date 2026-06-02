@@ -53,9 +53,9 @@ function emailWrapper(content: string): string {
         <table width="100%" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
           <!-- Header -->
           <tr>
-            <td style="background:#1E3A5F;padding:28px 36px;">
-              <p style="margin:0;color:#C9A84C;font-size:20px;font-weight:700;letter-spacing:-0.3px;">MijnComfortabel</p>
-              <p style="margin:4px 0 0;color:rgba(255,255,255,0.6);font-size:12px;">Grip op uw woning. Rust in uw hoofd.</p>
+            <td style="background:#1E3A5F;padding:24px 36px;">
+              <img src="https://mijncomfort-a8mtknzo.manus.space/manus-storage/comfortabel-logo_8c90d4c3.png" alt="Comfortabel" style="height:36px;width:auto;display:block;filter:brightness(0) invert(1);" />
+              <p style="margin:6px 0 0;color:rgba(255,255,255,0.6);font-size:12px;">Grip op uw woning. Rust in uw hoofd.</p>
             </td>
           </tr>
           <!-- Body -->

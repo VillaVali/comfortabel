@@ -49,9 +49,12 @@ export default function ClientLayout({
                 <span className="hidden sm:inline">Terug</span>
               </a>
             ) : (
-              <div className="flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-[#C9A84C]" />
-                <span className="font-bold text-sm">MijnComfortabel</span>
+              <div className="flex items-center">
+                <img
+                  src="/manus-storage/comfortabel-logo_8c90d4c3.png"
+                  alt="Comfortabel"
+                  className="h-7 w-auto object-contain brightness-0 invert"
+                />
               </div>
             )}
           </div>

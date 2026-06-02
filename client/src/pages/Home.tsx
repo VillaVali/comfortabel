@@ -51,9 +51,12 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-[#1E3A5F] to-[#0f2340] text-white">
       {/* Header */}
       <header className="px-6 py-5 flex items-center justify-between max-w-6xl mx-auto">
-        <div className="flex items-center gap-2">
-          <Building2 className="w-6 h-6 text-[#C9A84C]" />
-          <span className="font-bold text-lg tracking-tight">MijnComfortabel</span>
+        <div className="flex items-center">
+          <img
+            src="/manus-storage/comfortabel-logo_8c90d4c3.png"
+            alt="Comfortabel — zorgeloos wonen"
+            className="h-10 w-auto object-contain brightness-0 invert"
+          />
         </div>
         <nav className="flex items-center gap-4">
           <a
