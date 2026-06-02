@@ -5,6 +5,7 @@ import {
   customers,
   properties,
   inspections,
+  inspectionItems,
   maintenanceIssues,
   maintenancePlanning,
 } from "../drizzle/schema";
@@ -13,7 +14,7 @@ import { createContext } from "./context";
 
 export const pdfRouter = Router();
 
-// ─── Puppeteer helper ─────────────────────────────────────────────────────────
+// --- Puppeteer helper ---------------------------------------------------------
 
 async function htmlToPdf(html: string): Promise<Buffer> {
   const browser = await puppeteer.launch({
@@ -35,7 +36,7 @@ async function htmlToPdf(html: string): Promise<Buffer> {
   }
 }
 
-// ─── LLM helper ───────────────────────────────────────────────────────────────
+// --- LLM helper ---------------------------------------------------------------
 
 async function callLLM(systemPrompt: string, userPrompt: string): Promise<string> {
   const baseUrl = (process.env.BUILT_IN_FORGE_API_URL || "").replace(/\/+$/, "");
@@ -57,13 +58,13 @@ async function callLLM(systemPrompt: string, userPrompt: string): Promise<string
   return data.choices?.[0]?.message?.content || "";
 }
 
-// ─── Auth helper ──────────────────────────────────────────────────────────────
+// --- Auth helper --------------------------------------------------------------
 
 async function checkAuth(req: Parameters<typeof createContext>[0]["req"], res: Parameters<typeof createContext>[0]["res"]) {
   return createContext({ req: req as any, res: res as any });
 }
 
-// ─── Grade color helper ───────────────────────────────────────────────────────
+// --- Grade color helper -------------------------------------------------------
 
 function gradeColor(grade?: string | null): string {
   if (!grade) return "#94a3b8";
@@ -80,7 +81,7 @@ function labelColor(label?: string | null): string {
   return "#ef4444";
 }
 
-// ─── Shared PDF header/footer styles ─────────────────────────────────────────
+// --- Shared PDF header/footer styles -----------------------------------------
 
 const PDF_STYLES = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -159,7 +160,7 @@ const PDF_STYLES = `
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 `;
 
-// ─── 1. Woningpaspoort™ PDF ───────────────────────────────────────────────────
+// --- 1. WoningpaspoortTM PDF ---------------------------------------------------
 
 pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
   try {
@@ -214,11 +215,11 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
     const eur = (v?: number | null) => v ? `€${v.toLocaleString("nl-NL")}` : "—";
 
     const html = `<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">
-<title>Woningpaspoort™ - ${property.street} ${property.houseNumber}</title>
+<title>WoningpaspoortTM - ${property.street} ${property.houseNumber}</title>
 <style>${PDF_STYLES}</style></head><body>
 
 <div class="header">
-  <div class="header-logo">MijnComfortabel™ · Woningpaspoort</div>
+  <div class="header-logo">MijnComfortabelTM · Woningpaspoort</div>
   <h1>${property.street} ${property.houseNumber}</h1>
   <div class="subtitle">${property.postalCode} ${property.city}${property.wijk ? ` · ${property.wijk}` : ""}</div>
   <div class="meta">Eigenaar: ${displayName} · Abonnement: ${(property.subscriptionType || "free").toUpperCase()}</div>
@@ -356,9 +357,9 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
   </div>
   ` : ""}
 
-  <!-- Woning Score™ -->
+  <!-- Woning ScoreTM -->
   <div class="section">
-    <div class="section-title">⭐ Comfortabel Score™</div>
+    <div class="section-title">⭐ Comfortabel ScoreTM</div>
     ${latestInspection ? `
     <div class="score-box">
       <div class="grade-circle" style="color:${gradeColor(latestInspection.woningGrade)};border-color:${gradeColor(latestInspection.woningGrade)};background:${gradeColor(latestInspection.woningGrade)}18">
@@ -420,7 +421,7 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
 </div>
 
 <div class="footer">
-  <span class="footer-brand">MijnComfortabel™</span>
+  <span class="footer-brand">MijnComfortabelTM</span>
   <span>Comfortabel® · Villa Vali Bouwgroep · Vertrouwelijk document</span>
   <span>Gegenereerd: ${new Date().toLocaleDateString("nl-NL")}</span>
 </div>
@@ -443,7 +444,7 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
   }
 });
 
-// ─── 2. Verduurzamingsadvies Rapport ─────────────────────────────────────────
+// --- 2. Verduurzamingsadvies Rapport -----------------------------------------
 
 pdfRouter.get("/verduurzaming/:propertyId", async (req, res) => {
   try {
@@ -521,7 +522,7 @@ Houd het praktisch en actionable. Gebruik realistische Nederlandse marktprijzen 
 <style>${PDF_STYLES}</style></head><body>
 
 <div class="header">
-  <div class="header-logo">MijnComfortabel™ · Verduurzamingsadvies</div>
+  <div class="header-logo">MijnComfortabelTM · Verduurzamingsadvies</div>
   <h1>Verduurzamingsadvies Rapport</h1>
   <div class="subtitle">${property.street} ${property.houseNumber}, ${property.postalCode} ${property.city}</div>
   <div class="meta">Eigenaar: ${displayName} · Bouwjaar: ${property.buildYear || "?"} · Huidig label: ${property.energyLabel || "?"}</div>
@@ -561,7 +562,7 @@ Houd het praktisch en actionable. Gebruik realistische Nederlandse marktprijzen 
 </div>
 
 <div class="footer">
-  <span class="footer-brand">MijnComfortabel™</span>
+  <span class="footer-brand">MijnComfortabelTM</span>
   <span>AI-gegenereerd advies op basis van woningpaspoort · Raadpleeg altijd een gecertificeerd energieadviseur</span>
   <span>${new Date().toLocaleDateString("nl-NL")}</span>
 </div>
@@ -584,7 +585,7 @@ Houd het praktisch en actionable. Gebruik realistische Nederlandse marktprijzen 
   }
 });
 
-// ─── 3. Subsidie Berekening Rapport ──────────────────────────────────────────
+// --- 3. Subsidie Berekening Rapport ------------------------------------------
 
 pdfRouter.get("/subsidies/:propertyId", async (req, res) => {
   try {
@@ -656,7 +657,7 @@ Gebruik actuele Nederlandse subsidiebedragen van 2024-2025. Wees specifiek en re
 <style>${PDF_STYLES}</style></head><body>
 
 <div class="header">
-  <div class="header-logo">MijnComfortabel™ · Subsidie Berekening</div>
+  <div class="header-logo">MijnComfortabelTM · Subsidie Berekening</div>
   <h1>Subsidie Berekening Rapport</h1>
   <div class="subtitle">${property.street} ${property.houseNumber}, ${property.postalCode} ${property.city}</div>
   <div class="meta">Eigenaar: ${displayName} · Energielabel: ${property.energyLabel || "?"} · Verwarming: ${property.heatingSystem || "?"}</div>
@@ -701,7 +702,7 @@ Gebruik actuele Nederlandse subsidiebedragen van 2024-2025. Wees specifiek en re
 </div>
 
 <div class="footer">
-  <span class="footer-brand">MijnComfortabel™</span>
+  <span class="footer-brand">MijnComfortabelTM</span>
   <span>AI-gegenereerde berekening · Subsidiebedragen kunnen wijzigen · Raadpleeg rvo.nl voor actuele bedragen</span>
   <span>${new Date().toLocaleDateString("nl-NL")}</span>
 </div>
@@ -720,6 +721,290 @@ Gebruik actuele Nederlandse subsidiebedragen van 2024-2025. Wees specifiek en re
 
   } catch (err) {
     console.error("Subsidies rapport error:", err);
+    res.status(500).json({ error: "Failed to generate report" });
+  }
+});
+
+// --- 4. Jaarlijks Onderhoudsrapport -------------------------------------------
+
+pdfRouter.get("/onderhoudsrapport/:propertyId", async (req, res) => {
+  try {
+    const ctx = await checkAuth(req as any, res as any);
+    if (!ctx.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const propertyId = Number(req.params.propertyId);
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "Database unavailable" });
+
+    const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
+    if (!property) return res.status(404).json({ error: "Property not found" });
+
+    if (ctx.user.role !== "admin") {
+      const custRows = await db.select().from(customers).where(eq(customers.userId, ctx.user.id)).limit(1);
+      if (!custRows[0] || custRows[0].id !== property.customerId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+
+    const issueRows = await db.select().from(maintenanceIssues)
+      .where(eq(maintenanceIssues.propertyId, propertyId))
+      .orderBy(desc(maintenanceIssues.createdAt));
+    const planningRows = await db.select().from(maintenancePlanning)
+      .where(eq(maintenancePlanning.propertyId, propertyId))
+      .orderBy(asc(maintenancePlanning.plannedYear));
+
+    const year = new Date().getFullYear();
+    const openIssues = issueRows.filter(i => i.status !== "afgerond");
+    const resolvedIssues = issueRows.filter(i => i.status === "afgerond");
+    const totalEstimated = issueRows.reduce((s, i) => s + (i.estimatedCost || 0), 0);
+    const urgentCount = openIssues.filter(i => i.priority === "urgent").length;
+    const hoogCount = openIssues.filter(i => i.priority === "hoog").length;
+
+    const priorityColor = (p: string) =>
+      p === "urgent" ? "#dc2626" : p === "hoog" ? "#ea580c" : p === "normaal" ? "#2563eb" : "#64748b";
+    const statusLabel = (s: string) =>
+      s === "open" ? "Open" : s === "in_behandeling" ? "In behandeling" : s === "gepland" ? "Gepland" : "Afgerond";
+    const horizonLabel = (h: string) =>
+      h === "1jaar" ? "1 jaar" : h === "3jaar" ? "3 jaar" : h === "5jaar" ? "5 jaar" : h === "10jaar" ? "10 jaar" : "MJOP";
+
+    const html = `<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">
+<title>Jaarlijks Onderhoudsrapport ${year} - ${property.street} ${property.houseNumber}</title>
+<style>${PDF_STYLES}</style></head><body>
+<div class="header">
+  <div class="header-logo">MijnComfortabelTM - Jaarlijks Onderhoudsrapport</div>
+  <h1>${property.street} ${property.houseNumber}</h1>
+  <div class="subtitle">${property.postalCode} ${property.city}</div>
+  <div class="meta">Rapportjaar: ${year}</div>
+  <span class="badge">Gegenereerd op ${new Date().toLocaleDateString("nl-NL")}</span>
+</div>
+<div class="content">
+
+  <div class="section">
+    <div class="section-title">Samenvatting ${year}</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:8px">
+      <div style="background:#fef2f2;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#dc2626">${urgentCount}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">Urgent</div>
+      </div>
+      <div style="background:#fff7ed;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#ea580c">${hoogCount}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">Hoog</div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:28px;font-weight:900;color:#16a34a">${resolvedIssues.length}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">Afgerond</div>
+      </div>
+      <div style="background:#f8fafc;border-radius:10px;padding:14px;text-align:center">
+        <div style="font-size:22px;font-weight:900;color:#1E3A5F">${totalEstimated > 0 ? "EUR" + totalEstimated.toLocaleString("nl-NL", {minimumFractionDigits:0,maximumFractionDigits:0}) : "EUR0"}</div>
+        <div style="font-size:11px;color:#64748b;margin-top:4px">Geschatte kosten</div>
+      </div>
+    </div>
+  </div>
+
+  ${openIssues.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Open onderhoudspunten (${openIssues.length})</div>
+    ${openIssues.map(issue => `
+    <div style="border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:700;color:#1e293b">${issue.title}</div>
+        <div style="display:flex;gap:6px">
+          <span style="font-size:10px;font-weight:700;color:${priorityColor(issue.priority)};background:${priorityColor(issue.priority)}18;padding:2px 8px;border-radius:20px">${issue.priority.toUpperCase()}</span>
+          <span style="font-size:10px;color:#64748b;background:#f1f5f9;padding:2px 8px;border-radius:20px">${statusLabel(issue.status)}</span>
+        </div>
+      </div>
+      ${issue.description ? `<div style="font-size:11px;color:#64748b;margin-bottom:6px">${issue.description}</div>` : ""}
+      <div style="display:flex;gap:16px;font-size:11px;color:#94a3b8">
+        ${issue.category ? `<span>Categorie: ${issue.category}</span>` : ""}
+        ${issue.estimatedCost ? `<span>Geschat: EUR${issue.estimatedCost.toLocaleString("nl-NL")}</span>` : ""}
+        ${issue.dueDate ? `<span>Deadline: ${new Date(issue.dueDate).toLocaleDateString("nl-NL")}</span>` : ""}
+      </div>
+    </div>`).join("")}
+  </div>` : `<div class="section"><div class="section-title">Open onderhoudspunten</div><div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">Geen open onderhoudspunten - uitstekend!</div></div>`}
+
+  ${planningRows.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Meerjarenplanning</div>
+    ${planningRows.map(p => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:#1e293b">${p.title}</div>
+        ${p.category ? `<div style="font-size:11px;color:#94a3b8">${p.category}</div>` : ""}
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;font-weight:700;color:#1E3A5F">${p.plannedYear || "N.v.t."}</div>
+        <div style="font-size:11px;color:#64748b">${horizonLabel(p.horizon || "3jaar")} ${p.estimatedCost ? "- EUR" + p.estimatedCost.toLocaleString("nl-NL") : ""}</div>
+      </div>
+    </div>`).join("")}
+  </div>` : ""}
+
+  ${resolvedIssues.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Afgeronde onderhoudspunten (${resolvedIssues.length})</div>
+    ${resolvedIssues.slice(0, 10).map(issue => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f1f5f9">
+      <div style="font-size:12px;color:#64748b">${issue.title}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${issue.estimatedCost ? `<span style="font-size:11px;color:#94a3b8">EUR${issue.estimatedCost.toLocaleString("nl-NL")}</span>` : ""}
+        <span style="font-size:10px;color:#16a34a;background:#f0fdf4;padding:2px 8px;border-radius:20px">Afgerond</span>
+      </div>
+    </div>`).join("")}
+  </div>` : ""}
+
+</div>
+<div class="footer">
+  <span class="footer-brand">MijnComfortabelTM</span>
+  <span>Jaarlijks Onderhoudsrapport ${year} - Vertrouwelijk document</span>
+  <span>${new Date().toLocaleDateString("nl-NL")}</span>
+</div>
+</body></html>`;
+
+    const format = req.query.format === "html" ? "html" : "pdf";
+    if (format === "html") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(html);
+    }
+    const pdfBuffer = await htmlToPdf(html);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="onderhoudsrapport-${year}-${property.street.replace(/\s+/g, "-")}-${property.houseNumber}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error("Onderhoudsrapport error:", err);
+    res.status(500).json({ error: "Failed to generate report" });
+  }
+});
+
+// --- 5. Technisch Inspectierapport -------------------------------------------
+
+pdfRouter.get("/inspectierapport/:propertyId", async (req, res) => {
+  try {
+    const ctx = await checkAuth(req as any, res as any);
+    if (!ctx.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const propertyId = Number(req.params.propertyId);
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "Database unavailable" });
+
+    const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
+    if (!property) return res.status(404).json({ error: "Property not found" });
+
+    if (ctx.user.role !== "admin") {
+      const custRows = await db.select().from(customers).where(eq(customers.userId, ctx.user.id)).limit(1);
+      if (!custRows[0] || custRows[0].id !== property.customerId) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+    }
+
+    const inspectionRows = await db.select().from(inspections)
+      .where(eq(inspections.propertyId, propertyId))
+      .orderBy(desc(inspections.inspectionDate));
+    const latestInspection = inspectionRows[0];
+
+    if (!latestInspection) {
+      return res.status(404).json({ error: "Geen inspectie gevonden" });
+    }
+
+    const itemRows = await db.select().from(inspectionItems)
+      .where(eq(inspectionItems.inspectionId, latestInspection.id));
+
+    const byCategory: Record<string, typeof itemRows> = {};
+    for (const item of itemRows) {
+      const cat = item.category || "Overig";
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(item);
+    }
+
+    const scoreColor = (s: number | null | undefined) => {
+      if (!s) return "#94a3b8";
+      if (s >= 8) return "#16a34a";
+      if (s >= 6) return "#ca8a04";
+      if (s >= 4) return "#ea580c";
+      return "#dc2626";
+    };
+
+    const scores = [
+      { label: "Installaties", score: latestInspection.scoreInstallaties },
+      { label: "Bouwkundig", score: latestInspection.scoreBouwkundig },
+      { label: "Veiligheid", score: latestInspection.scoreVeiligheid },
+      { label: "Vocht & Ventilatie", score: latestInspection.scoreVochtVentilatie },
+      { label: "Energie", score: latestInspection.scoreEnergie },
+    ];
+
+    const html = `<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8">
+<title>Technisch Inspectierapport - ${property.street} ${property.houseNumber}</title>
+<style>${PDF_STYLES}</style></head><body>
+<div class="header">
+  <div class="header-logo">MijnComfortabelTM - Technisch Inspectierapport</div>
+  <h1>${property.street} ${property.houseNumber}</h1>
+  <div class="subtitle">${property.postalCode} ${property.city}</div>
+  <div class="meta">Inspectiedatum: ${new Date(latestInspection.inspectionDate).toLocaleDateString("nl-NL")} - Comfortabel Technisch Beheer</div>
+  <span class="badge">Gegenereerd op ${new Date().toLocaleDateString("nl-NL")}</span>
+</div>
+<div class="content">
+
+  <div class="section">
+    <div class="section-title">Woning Score</div>
+    <div class="score-box">
+      <div class="grade-circle" style="background:${gradeColor(latestInspection.woningGrade)};color:white;border:none">
+        ${latestInspection.woningGrade || "?"}
+      </div>
+      <div class="score-bars">
+        ${scores.map(s => `
+        <div class="bar-row">
+          <span class="bar-label">${s.label}</span>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${s.score ? s.score * 10 : 0}%;background:${scoreColor(s.score)}"></div>
+          </div>
+          <span class="bar-value" style="color:${scoreColor(s.score)}">${s.score ?? "—"}/10</span>
+        </div>`).join("")}
+      </div>
+      <div style="text-align:center;min-width:80px">
+        <div style="font-size:32px;font-weight:900;color:#1E3A5F">${latestInspection.totalScore ?? "—"}</div>
+        <div style="font-size:11px;color:#64748b">Totaalscore</div>
+      </div>
+    </div>
+  </div>
+
+  ${Object.entries(byCategory).map(([cat, items]) => `
+  <div class="section">
+    <div class="section-title">${cat}</div>
+    ${items.map(item => `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f1f5f9">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:600;color:#1e293b">${item.subcategory || item.category}</div>
+        ${item.notes ? `<div style="font-size:11px;color:#64748b;margin-top:3px">${item.notes}</div>` : ""}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;margin-left:12px">
+        ${item.answer && item.answer !== "onbekend" ? `<span style="font-size:10px;font-weight:700;color:${item.answer === "goed" ? "#16a34a" : item.answer === "urgent" ? "#dc2626" : item.answer === "aandacht" ? "#ea580c" : "#94a3b8"};background:${item.answer === "goed" ? "#f0fdf4" : item.answer === "urgent" ? "#fef2f2" : item.answer === "aandacht" ? "#fff7ed" : "#f8fafc"};padding:2px 8px;border-radius:20px">${item.answer.charAt(0).toUpperCase() + item.answer.slice(1)}</span>` : ""}
+      </div>
+    </div>`).join("")}
+  </div>`).join("")}
+
+  ${latestInspection.summary ? `
+  <div class="section">
+    <div class="section-title">Samenvatting & Aanbevelingen</div>
+    <div style="font-size:12px;color:#475569;line-height:1.6;white-space:pre-wrap">${latestInspection.summary}</div>
+  </div>` : ""}
+
+</div>
+<div class="footer">
+  <span class="footer-brand">MijnComfortabelTM</span>
+  <span>Technisch Inspectierapport - Vertrouwelijk document</span>
+  <span>${new Date().toLocaleDateString("nl-NL")}</span>
+</div>
+</body></html>`;
+
+    const format = req.query.format === "html" ? "html" : "pdf";
+    if (format === "html") {
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(html);
+    }
+    const pdfBuffer = await htmlToPdf(html);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="inspectierapport-${property.street.replace(/\s+/g, "-")}-${property.houseNumber}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error("Inspectierapport error:", err);
     res.status(500).json({ error: "Failed to generate report" });
   }
 });

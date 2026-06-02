@@ -1,8 +1,9 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { getDb } from "./db";
-import { users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { users, passwordResetTokens } from "../drizzle/schema";
+import { eq, and, gt } from "drizzle-orm";
+import { randomBytes } from "crypto";
 import { createSessionToken, verifySessionToken, COOKIE_NAME } from "./context";
 
 export const authRouter = Router();
@@ -72,6 +73,71 @@ authRouter.post("/login", async (req, res) => {
   }
 });
 
+// POST /api/auth/register
+authRouter.post("/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body as { name?: string; email?: string; password?: string };
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Naam, e-mail en wachtwoord zijn verplicht" });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Wachtwoord moet minimaal 8 tekens bevatten" });
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Ongeldig e-mailadres" });
+    }
+
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "Database niet beschikbaar" });
+
+    // Check if email already in use
+    const existing = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email.toLowerCase().trim()))
+      .limit(1);
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Dit e-mailadres is al in gebruik" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const result = await db.insert(users).values({
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      role: "user",
+      isActive: true,
+    });
+    const userId = Number((result[0] as any).insertId);
+
+    // Also create a customer record linked to this user
+    const { customers } = await import("../drizzle/schema");
+    await db.insert(customers).values({
+      userId,
+      email: email.toLowerCase().trim(),
+      firstName: name.trim().split(" ")[0] || name.trim(),
+      lastName: name.trim().split(" ").slice(1).join(" ") || null,
+      type: "particulier",
+      createdBy: userId,
+    });
+
+    // Auto-login: create session
+    const token = await createSessionToken(userId);
+    res.cookie(COOKIE_NAME, token, getCookieOptions(req));
+
+    return res.status(201).json({
+      id: userId,
+      email: email.toLowerCase().trim(),
+      name: name.trim(),
+      role: "user",
+    });
+  } catch (err) {
+    console.error("[Auth] Register error:", err);
+    return res.status(500).json({ error: "Registratie mislukt" });
+  }
+});
+
 // POST /api/auth/logout
 authRouter.post("/logout", (req, res) => {
   const isSecure =
@@ -83,6 +149,78 @@ authRouter.post("/logout", (req, res) => {
     path: "/",
   });
   return res.json({ success: true });
+});
+
+// POST /api/auth/forgot-password
+authRouter.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email) return res.status(400).json({ error: "E-mail is verplicht" });
+
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "Database niet beschikbaar" });
+
+    const result = await db.select({ id: users.id, name: users.name, email: users.email })
+      .from(users).where(eq(users.email, email.toLowerCase().trim())).limit(1);
+    const user = result[0];
+
+    // Always return success to prevent email enumeration
+    if (!user) return res.json({ success: true, message: "Als dit e-mailadres bekend is, ontvangt u een resetlink." });
+
+    // Generate token (valid for 2 hours)
+    const token = randomBytes(48).toString("hex");
+    const expiresAt = new Date(Date.now() + 2 * 60 * 60 * 1000);
+
+    await db.insert(passwordResetTokens).values({ userId: user.id, token, expiresAt });
+
+    // Build reset URL from request origin
+    const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
+    const resetUrl = `${origin}/wachtwoord-reset?token=${token}`;
+
+    // Log the reset URL to server console (admin can copy and share)
+    console.log(`[Auth] Password reset for ${user.email}: ${resetUrl}`);
+
+    return res.json({
+      success: true,
+      message: "Resetlink aangemaakt. Neem contact op met de beheerder om de link te ontvangen.",
+      // In development, expose the token for testing
+      ...(process.env.NODE_ENV === "development" ? { resetUrl } : {}),
+    });
+  } catch (err) {
+    console.error("[Auth] Forgot password error:", err);
+    return res.status(500).json({ error: "Verzoek mislukt" });
+  }
+});
+
+// POST /api/auth/reset-password
+authRouter.post("/reset-password", async (req, res) => {
+  try {
+    const { token, password } = req.body as { token?: string; password?: string };
+    if (!token || !password) return res.status(400).json({ error: "Token en wachtwoord zijn verplicht" });
+    if (password.length < 8) return res.status(400).json({ error: "Wachtwoord moet minimaal 8 tekens bevatten" });
+
+    const db = await getDb();
+    if (!db) return res.status(500).json({ error: "Database niet beschikbaar" });
+
+    const now = new Date();
+    const tokenRows = await db.select().from(passwordResetTokens)
+      .where(and(eq(passwordResetTokens.token, token), gt(passwordResetTokens.expiresAt, now)))
+      .limit(1);
+    const resetToken = tokenRows[0];
+
+    if (!resetToken || resetToken.usedAt) {
+      return res.status(400).json({ error: "Ongeldige of verlopen resetlink" });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, resetToken.userId));
+    await db.update(passwordResetTokens).set({ usedAt: now }).where(eq(passwordResetTokens.id, resetToken.id));
+
+    return res.json({ success: true, message: "Wachtwoord succesvol gewijzigd" });
+  } catch (err) {
+    console.error("[Auth] Reset password error:", err);
+    return res.status(500).json({ error: "Wachtwoord reset mislukt" });
+  }
 });
 
 // GET /api/auth/me

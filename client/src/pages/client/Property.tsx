@@ -18,6 +18,7 @@ import {
   Euro,
   Star,
   Globe,
+  Bot,
 } from "lucide-react";
 import { useState } from "react";
 import DocumentsPanel from "../../components/DocumentsPanel";
@@ -125,6 +126,14 @@ export default function ClientProperty() {
           {SUBSCRIPTION_LABELS[tier]}
           {SUBSCRIPTION_PRICES[tier] > 0 ? ` • €${SUBSCRIPTION_PRICES[tier]}/mnd` : " • Gratis"}
         </span>
+        <div className="flex items-center gap-2">
+        <a
+          href={`/mijn/woning/${propertyId}/huismeester`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E3A5F]/10 text-[#1E3A5F] hover:bg-[#1E3A5F]/20 transition-colors"
+        >
+          <Bot className="w-3.5 h-3.5" />
+          AI Huismeester
+        </a>
         <a
           href="/abonnementen"
           className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
@@ -132,6 +141,7 @@ export default function ClientProperty() {
           Pakket wijzigen
           <ArrowUpRight className="w-3 h-3" />
         </a>
+        </div>
       </div>
 
       {/* Score card — gated for woningScore */}
@@ -783,6 +793,62 @@ export default function ClientProperty() {
                       <><Leaf className="w-3.5 h-3.5" />Download PDF</>
                     )}
                   </button>
+                ) : (
+                  <a href="/abonnementen" className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex-shrink-0">
+                    <Lock className="w-3.5 h-3.5" />
+                    Upgrade
+                  </a>
+                )}
+              </div>
+
+              {/* Jaarlijks Onderhoudsrapport */}
+              <div className="flex items-start gap-4 px-5 py-4">
+                <span className="text-xl flex-shrink-0 mt-0.5">🔧</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 text-sm">Jaarlijks Onderhoudsrapport</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Overzicht van alle open en afgeronde onderhoudspunten, prioriteiten, kosten en meerjarenplanning</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">Basis+</span>
+                  </div>
+                </div>
+                {features.jaarlijksRapport ? (
+                  <a
+                    href={`/api/reports/onderhoudsrapport/${property.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[#1E3A5F] px-4 py-2 rounded-lg hover:bg-[#2d5a8e] transition-colors flex-shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download PDF
+                  </a>
+                ) : (
+                  <a href="/abonnementen" className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex-shrink-0">
+                    <Lock className="w-3.5 h-3.5" />
+                    Upgrade
+                  </a>
+                )}
+              </div>
+
+              {/* Technisch Inspectierapport */}
+              <div className="flex items-start gap-4 px-5 py-4">
+                <span className="text-xl flex-shrink-0 mt-0.5">🔍</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-slate-800 text-sm">Technisch Inspectierapport</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Gedetailleerd inspectierapport met Comfortabel Score™, scores per categorie en bevindingen per onderdeel</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full">Basis+</span>
+                  </div>
+                </div>
+                {features.jaarlijksRapport ? (
+                  <a
+                    href={`/api/reports/inspectierapport/${property.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-semibold text-white bg-slate-700 px-4 py-2 rounded-lg hover:bg-slate-800 transition-colors flex-shrink-0"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    Download PDF
+                  </a>
                 ) : (
                   <a href="/abonnementen" className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border border-slate-200 px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors flex-shrink-0">
                     <Lock className="w-3.5 h-3.5" />

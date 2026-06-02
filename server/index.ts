@@ -9,6 +9,7 @@ import cookieParser from "cookie-parser";
 import { authRouter } from "./auth";
 import { pdfRouter } from "./pdf";
 import { uploadRouter } from "./upload";
+import { chatRouter } from "./chat";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,9 @@ async function startServer() {
 
   // Document upload route
   app.use("/api/upload", uploadRouter);
+
+  // AI Huismeester chat (streaming SSE)
+  app.use("/api/chat", chatRouter);
 
   // tRPC — must be before Vite middleware
   app.use(

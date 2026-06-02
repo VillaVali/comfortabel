@@ -103,9 +103,17 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="text-xs text-gray-400 text-center mt-6">
-            Geen account? Neem contact op met Comfortabel.
-          </p>
+          <div className="flex flex-col items-center gap-2 mt-6">
+            <a href="/wachtwoord-vergeten" className="text-xs text-gray-400 hover:text-gray-600 transition-colors underline">
+              Wachtwoord vergeten?
+            </a>
+            <p className="text-xs text-gray-400">
+              Nog geen account?{" "}
+              <a href="/registreren" className="text-[#C9A84C] hover:text-[#b8943d] font-medium transition-colors">
+                Gratis aanmelden
+              </a>
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-xs text-white/30 mt-6">

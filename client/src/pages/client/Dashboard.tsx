@@ -1,7 +1,7 @@
 import ClientLayout from "../../components/ClientLayout";
 import { trpc } from "../../lib/trpc";
 import WoningScore from "../../components/WoningScore";
-import { Home, ArrowRight, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { Home, ArrowRight, ClipboardCheck, AlertTriangle, Plus, FileText, Zap } from "lucide-react";
 import {
   SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS, type SubscriptionTier,
 } from "@shared/const";
@@ -22,19 +22,42 @@ export default function ClientDashboard() {
           ))}
         </div>
       ) : properties.length === 0 ? (
-        <div className="text-center py-20">
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Home className="w-8 h-8 text-slate-300" />
+        <div className="max-w-md mx-auto py-12">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-[#1E3A5F]/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
+              <Home className="w-10 h-10 text-[#1E3A5F]" />
+            </div>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">Voeg uw eerste woning toe</h2>
+            <p className="text-slate-500 text-sm leading-relaxed">
+              Maak een Woningpaspoort™ aan en krijg direct toegang tot alle woninggegevens, gratis deeplinks en de AI Huismeester.
+            </p>
           </div>
-          <h2 className="text-lg font-semibold text-slate-700 mb-2">Nog geen woningen</h2>
-          <p className="text-slate-500 text-sm max-w-sm mx-auto">
-            Uw woning is nog niet toegevoegd aan het portaal. Neem contact op met Comfortabel om uw woning te registreren.
-          </p>
+
+          {/* Benefits */}
+          <div className="space-y-3 mb-8">
+            {[
+              { icon: FileText, title: "Woningpaspoort™", desc: "Alle gegevens op één plek" },
+              { icon: Zap, title: "Gratis deeplinks", desc: "BAG, WOZ, Energielabel, Kadaster" },
+              { icon: Home, title: "Onderhoudskalender", desc: "Nooit meer een moment missen" },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+                <div className="w-9 h-9 bg-[#1E3A5F]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Icon className="w-4 h-4 text-[#1E3A5F]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">{title}</p>
+                  <p className="text-xs text-slate-500">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <a
-            href="mailto:info@comfortabel.nl"
-            className="inline-block mt-5 text-sm text-[#1E3A5F] font-medium hover:underline"
+            href="/mijn/onboarding"
+            className="w-full py-3 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition active:scale-[0.97] text-sm"
           >
-            Contact opnemen →
+            <Plus className="w-4 h-4" />
+            Woning toevoegen
           </a>
         </div>
       ) : (

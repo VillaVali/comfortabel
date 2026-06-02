@@ -15,6 +15,11 @@ import ClientProperty from "./pages/client/Property";
 import NotFound from "./pages/NotFound";
 import Pricing from "./pages/Pricing";
 import Onboarding from "./pages/Onboarding";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ClientOnboarding from "./pages/client/Onboarding";
+import AIHuismeester from "./pages/client/AIHuismeester";
 
 export default function App() {
   return (
@@ -24,6 +29,9 @@ export default function App() {
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/login" component={Login} />
+        <Route path="/registreren" component={Register} />
+        <Route path="/wachtwoord-vergeten" component={ForgotPassword} />
+        <Route path="/wachtwoord-reset" component={ResetPassword} />
         <Route path="/abonnementen" component={Pricing} />
         <Route path="/welkom" component={Onboarding} />
         {/* Admin routes */}
@@ -36,7 +44,9 @@ export default function App() {
         <Route path="/admin/users" component={AdminUsers} />
         {/* Client routes */}
         <Route path="/mijn" component={ClientDashboard} />
+        <Route path="/mijn/onboarding" component={ClientOnboarding} />
         <Route path="/mijn/woning/:id" component={ClientProperty} />
+        <Route path="/mijn/woning/:propertyId/huismeester" component={AIHuismeester} />
         {/* Fallback */}
         <Route component={NotFound} />
       </Switch>

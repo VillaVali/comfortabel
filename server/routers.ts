@@ -303,6 +303,62 @@ const propertiesRouter = t.router({
       await db.update(properties).set(data).where(eq(properties.id, id));
       return { success: true };
     }),
+
+  // Client can create their own property (linked to their customer record)
+  createOwn: protectedProcedure
+    .input(
+      z.object({
+        street: z.string(),
+        houseNumber: z.string(),
+        postalCode: z.string(),
+        city: z.string(),
+        propertyType: z.string().optional(),
+        buildYear: z.number().optional(),
+        area: z.number().optional(),
+        residents: z.number().optional(),
+        energyLabel: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Find or create customer record for this user
+      let cust = await db
+        .select()
+        .from(customers)
+        .where(eq(customers.userId, ctx.user.id))
+        .limit(1);
+      if (!cust[0]) {
+        const res = await db.insert(customers).values({
+          userId: ctx.user.id,
+          email: ctx.user.email || "",
+          firstName: ctx.user.name?.split(" ")[0] || ctx.user.name || "",
+          lastName: ctx.user.name?.split(" ").slice(1).join(" ") || null,
+          type: "particulier",
+          createdBy: ctx.user.id,
+        });
+        cust = await db
+          .select()
+          .from(customers)
+          .where(eq(customers.id, Number((res[0] as any).insertId)))
+          .limit(1);
+      }
+      if (!cust[0]) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const result = await db.insert(properties).values({
+        customerId: cust[0].id,
+        street: input.street,
+        houseNumber: input.houseNumber,
+        postalCode: input.postalCode,
+        city: input.city,
+        propertyType: (input.propertyType as any) || "tussenwoning",
+        buildYear: input.buildYear,
+        surfaceM2: input.area,
+        residents: input.residents,
+        energyLabel: (input.energyLabel as any) || undefined,
+        subscriptionType: "free",
+      });
+      return { id: Number((result[0] as any).insertId) };
+    }),
 });
 
 // ─── Inspections router ───────────────────────────────────────────────────────

@@ -29,6 +29,13 @@
       "when": 1780347788699,
       "tag": "0003_chunky_thunderbird",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1780429380191,
+      "tag": "0004_early_amazoness",
+      "breakpoints": true
     }
   ]
 }

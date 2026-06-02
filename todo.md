@@ -101,15 +101,53 @@
 ## Fase 9: Product Roadmap + USP-features Implementatie
 
 ### Roadmap document
-- [ ] Strategisch roadmap document: v1.0 lancering + groeifases per 25 abonnees
-- [ ] Feature-overzicht per abonnementstier (Free t/m Premium)
-- [ ] Technische implementatievolgorde vastgelegd
+- [x] Strategisch roadmap document: v1.0 lancering + groeifases per 25 abonnees
+- [x] Feature-overzicht per abonnementstier (Free t/m Premium)
+- [x] Technische implementatievolgorde vastgelegd
 
 ### USP-features Implementatie (Laag 1)
-- [ ] Woningpaspoort™ PDF-download: HTML-naar-PDF rendering via Puppeteer
-- [ ] PDF-download knop in client portaal (paspoort-tab)
-- [ ] Verduurzamingsadvies rapport: LLM-gegenereerd op basis van paspoortdata
-- [ ] Subsidie Berekening rapport: LLM-gegenereerd met ISDE-kengetallen
-- [ ] Gratis deeplinks sectie: BAG, WOZ, EP-Online, Omgevingsloket, Kadaster, CBS
-- [ ] Downloads-tab in client portaal met overzicht van alle beschikbare downloads
-- [ ] TypeScript: geen fouten, alle tests slagen
+- [x] Woningpaspoort™ PDF-download: HTML-naar-PDF rendering via Puppeteer
+- [x] PDF-download knop in client portaal (paspoort-tab + downloads-tab)
+- [x] Verduurzamingsadvies rapport: LLM-gegenereerd op basis van paspoortdata
+- [x] Subsidie Berekening rapport: LLM-gegenereerd met ISDE-kengetallen
+- [x] Gratis deeplinks sectie: BAG, WOZ, EP-Online, Omgevingsloket, Kadaster, CBS, Rijksmonumenten, RVO ISDE
+- [x] Downloads-tab in client portaal met overzicht van alle beschikbare downloads
+- [x] TypeScript: geen fouten, 19 tests geslaagd
+
+## Fase 10: v1.0 Lancering — Zelfregistratie + Woning + AI Huismeester + PDF's
+
+### Stap 1: Zelfregistratie
+- [ ] Backend: POST /api/auth/register route (naam, email, wachtwoord, bcrypt hash)
+- [ ] Backend: validatie — email al in gebruik, wachtwoord minimaal 8 tekens
+- [ ] Frontend: /registreren pagina met formulier (naam, email, wachtwoord, herhaal wachtwoord)
+- [ ] Frontend: link van login naar registreren en vice versa
+- [ ] Na registratie: automatisch inloggen + redirect naar onboarding
+- [ ] Nieuw account krijgt standaard rol 'user' en Free-abonnement
+
+### Stap 2: Woning toevoegen door klant
+- [ ] Backend: properties.createOwn procedure — klant voegt eigen woning toe
+- [ ] Backend: klant ziet alleen eigen woningen (userId-check)
+- [ ] Frontend: onboarding-flow na eerste login — stap 1: woning toevoegen
+- [ ] Frontend: woning-toevoegen formulier in client portaal (adres, type, bouwjaar, m²)
+- [ ] Frontend: lege staat in client dashboard met CTA "Voeg uw eerste woning toe"
+
+### Stap 3: AI Huismeester
+- [ ] Backend: tRPC aiHuismeester.chat procedure (streaming, paspoortcontext)
+- [ ] Backend: chat-history opslaan per woning per gebruiker (schema uitbreiden)
+- [ ] Frontend: AI Huismeester tab in client portaal per woning
+- [ ] Frontend: chatinterface met berichtgeschiedenis, invoerveld, streaming responses
+- [ ] Frontend: tier-gating — Free max 3 vragen/maand, Digital+ onbeperkt
+- [ ] Frontend: vraagenteller voor Free-gebruikers
+
+### Stap 4: PDF-rapporten
+- [ ] Backend: /api/pdf/onderhoud/:propertyId — Jaarlijks Onderhoudsrapport PDF
+- [ ] Backend: /api/pdf/inspectie/:propertyId — Technisch Inspectierapport PDF
+- [ ] Frontend: download-knoppen in Downloads-tab voor beide rapporten
+
+### Stap 5: Wachtwoord vergeten / reset
+- [ ] Backend: POST /api/auth/forgot-password (genereert reset-token, slaat op in DB)
+- [ ] Backend: POST /api/auth/reset-password (valideert token, update wachtwoord)
+- [ ] Database: passwordResetToken + passwordResetExpiry kolommen op users tabel
+- [ ] Frontend: /wachtwoord-vergeten pagina
+- [ ] Frontend: /wachtwoord-reset?token=... pagina
+- [ ] Frontend: link "Wachtwoord vergeten?" op login pagina

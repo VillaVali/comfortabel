@@ -59,6 +59,28 @@ export function useAuth() {
     []
   );
 
+  const register = useCallback(
+    async (name: string, email: string, password: string): Promise<{ error?: string }> => {
+      try {
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name, email, password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          return { error: data.error || "Registratie mislukt" };
+        }
+        setState({ user: data, loading: false });
+        return {};
+      } catch {
+        return { error: "Verbindingsfout. Probeer opnieuw." };
+      }
+    },
+    []
+  );
+
   const logout = useCallback(async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
@@ -73,6 +95,7 @@ export function useAuth() {
     isAuthenticated: !!state.user,
     isAdmin: state.user?.role === "admin",
     login,
+    register,
     logout,
     refetch: fetchMe,
   };

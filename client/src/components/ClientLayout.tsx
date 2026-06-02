@@ -1,7 +1,7 @@
 import { useAuth } from "../hooks/useAuth";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { Building2, LogOut, Home, ChevronLeft } from "lucide-react";
+import { Building2, LogOut, Home, ChevronLeft, Bot } from "lucide-react";
 
 export default function ClientLayout({
   children,
@@ -105,6 +105,15 @@ export default function ClientLayout({
         >
           <Home className={`w-5 h-5 mb-1 ${location === "/mijn" ? "text-[#C9A84C]" : ""}`} />
           Woningen
+        </a>
+        <a
+          href={location.includes("/mijn/woning/") ? `${location.split("/huismeester")[0]}/huismeester` : "/mijn"}
+          className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[56px] text-xs font-medium transition-colors ${
+            location.includes("/huismeester") ? "text-[#1E3A5F]" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <Bot className={`w-5 h-5 mb-1 ${location.includes("/huismeester") ? "text-[#C9A84C]" : ""}`} />
+          Huismeester
         </a>
         <button
           onClick={logout}
