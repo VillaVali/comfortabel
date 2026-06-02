@@ -178,3 +178,63 @@ describe("shared constants", () => {
     });
   });
 });
+
+// ── AI Huismeester Free-tier quota logic ──────────────────────────────────────
+
+const FREE_TIER_MONTHLY_LIMIT = 3;
+
+function isQuotaExceeded(questionCount: number, limit: number): boolean {
+  return questionCount >= limit;
+}
+
+function getMonthYear(date: Date): string {
+  return date.toISOString().slice(0, 7);
+}
+
+describe("AI Huismeester Free-tier quota", () => {
+  it("allows questions below the limit", () => {
+    expect(isQuotaExceeded(0, FREE_TIER_MONTHLY_LIMIT)).toBe(false);
+    expect(isQuotaExceeded(1, FREE_TIER_MONTHLY_LIMIT)).toBe(false);
+    expect(isQuotaExceeded(2, FREE_TIER_MONTHLY_LIMIT)).toBe(false);
+  });
+
+  it("blocks at exactly the limit", () => {
+    expect(isQuotaExceeded(3, FREE_TIER_MONTHLY_LIMIT)).toBe(true);
+  });
+
+  it("blocks above the limit", () => {
+    expect(isQuotaExceeded(4, FREE_TIER_MONTHLY_LIMIT)).toBe(true);
+    expect(isQuotaExceeded(100, FREE_TIER_MONTHLY_LIMIT)).toBe(true);
+  });
+
+  it("getMonthYear returns YYYY-MM format", () => {
+    const d = new Date("2026-06-02T10:00:00Z");
+    expect(getMonthYear(d)).toBe("2026-06");
+  });
+
+  it("getMonthYear changes at month boundary", () => {
+    const june = new Date("2026-06-30T23:59:59Z");
+    const july = new Date("2026-07-01T00:00:00Z");
+    expect(getMonthYear(june)).toBe("2026-06");
+    expect(getMonthYear(july)).toBe("2026-07");
+  });
+});
+
+// ── PLAN_FEATURES AI feature flags ───────────────────────────────────────────
+
+describe("PLAN_FEATURES AI flags", () => {
+  it("Free tier has limited AI (beperkt)", () => {
+    expect(PLAN_FEATURES.free.aiHuismeesterBeperkt).toBe(true);
+    expect(PLAN_FEATURES.free.aiHuismeesterUitgebreid).toBe(false);
+  });
+
+  it("Digital tier has unlimited AI (uitgebreid)", () => {
+    expect(PLAN_FEATURES.digital.aiHuismeesterUitgebreid).toBe(true);
+  });
+
+  it("All paid tiers have unlimited AI", () => {
+    (["digital", "basis", "plus", "premium"] as const).forEach((tier) => {
+      expect(PLAN_FEATURES[tier].aiHuismeesterUitgebreid).toBe(true);
+    });
+  });
+});

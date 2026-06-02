@@ -208,6 +208,12 @@ export default function Register() {
               Inloggen
             </Link>
           </p>
+          <p className="text-xs text-gray-300 text-center mt-3">
+            Door u aan te melden gaat u akkoord met onze{" "}
+            <a href="/algemene-voorwaarden" className="text-gray-400 hover:text-gray-600 underline">Algemene Voorwaarden</a>{" "}
+            en{" "}
+            <a href="/privacy" className="text-gray-400 hover:text-gray-600 underline">Privacyverklaring</a>.
+          </p>
         </div>
 
         <p className="text-center text-xs text-white/30 mt-6">

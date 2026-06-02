@@ -20,6 +20,8 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ClientOnboarding from "./pages/client/Onboarding";
 import AIHuismeester from "./pages/client/AIHuismeester";
+import Privacy from "./pages/Privacy";
+import AlgemeneVoorwaarden from "./pages/AlgemeneVoorwaarden";
 
 export default function App() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
         <Route path="/wachtwoord-reset" component={ResetPassword} />
         <Route path="/abonnementen" component={Pricing} />
         <Route path="/welkom" component={Onboarding} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/algemene-voorwaarden" component={AlgemeneVoorwaarden} />
         {/* Admin routes */}
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/customers" component={AdminCustomers} />

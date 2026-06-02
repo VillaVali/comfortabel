@@ -235,8 +235,15 @@ export default function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 py-6 text-center text-white/40 text-sm">
-        © {new Date().getFullYear()} Comfortabel® — Villa Vali Bouwgroep | MijnComfortabel is een besloten portaal
+      <footer className="border-t border-white/10 py-8 text-center text-white/40 text-sm">
+        <p>© {new Date().getFullYear()} Comfortabel® — Villa Vali Bouwgroep</p>
+        <div className="flex items-center justify-center gap-4 mt-2">
+          <a href="/privacy" className="hover:text-white/70 transition underline">Privacyverklaring</a>
+          <span>·</span>
+          <a href="/algemene-voorwaarden" className="hover:text-white/70 transition underline">Algemene Voorwaarden</a>
+          <span>·</span>
+          <a href="/abonnementen" className="hover:text-white/70 transition underline">Abonnementen</a>
+        </div>
       </footer>
     </div>
   );

@@ -1,6 +1,47 @@
 import AdminLayout from "../../components/AdminLayout";
 import { trpc } from "../../lib/trpc";
-import { Users, Home, ClipboardCheck, AlertTriangle, ArrowRight, Plus } from "lucide-react";
+import { Users, Home, ClipboardCheck, ArrowRight, Plus, TrendingUp } from "lucide-react";
+import { SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS, type SubscriptionTier } from "@shared/const";
+
+// Inline subscription stats component
+function SubscriptionStats({ properties }: { properties: Array<{ subscriptionType: string | null; subscriptionActive: boolean }> }) {
+  const tiers: SubscriptionTier[] = ["free", "digital", "basis", "plus", "premium"];
+  const total = properties.filter((p) => p.subscriptionActive).length;
+
+  const counts = tiers.reduce((acc, tier) => {
+    acc[tier] = properties.filter((p) => p.subscriptionType === tier && p.subscriptionActive).length;
+    return acc;
+  }, {} as Record<SubscriptionTier, number>);
+
+  // Monthly revenue estimate
+  const prices: Record<SubscriptionTier, number> = { free: 0, digital: 9.95, basis: 49, plus: 89, premium: 149 };
+  const mrr = tiers.reduce((sum, tier) => sum + counts[tier] * prices[tier], 0);
+
+  return (
+    <div>
+      <div className="flex items-center gap-6 mb-4">
+        <div>
+          <p className="text-2xl font-bold text-slate-800">{total}</p>
+          <p className="text-xs text-slate-500">Actieve woningen</p>
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-[#C9A84C]">€{mrr.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-xs text-slate-500">Geschatte MRR</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-5 gap-2">
+        {tiers.map((tier) => (
+          <div key={tier} className="text-center p-3 bg-slate-50 rounded-xl">
+            <p className="text-xl font-bold text-slate-800">{counts[tier]}</p>
+            <p className="text-xs font-medium mt-0.5" style={{ color: SUBSCRIPTION_COLORS[tier] }}>
+              {SUBSCRIPTION_LABELS[tier]}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminDashboard() {
   const { data: customers = [] } = trpc.customers.list.useQuery();
@@ -59,6 +100,15 @@ export default function AdminDashboard() {
             <p className="text-sm text-slate-500 mt-0.5">{s.label}</p>
           </a>
         ))}
+      </div>
+
+      {/* Subscription stats */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5 mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="w-4 h-4 text-[#C9A84C]" />
+          <h2 className="font-semibold text-slate-800">Abonnementen overzicht</h2>
+        </div>
+        <SubscriptionStats properties={properties} />
       </div>
 
       {/* Quick actions */}

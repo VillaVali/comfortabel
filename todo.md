@@ -117,37 +117,65 @@
 ## Fase 10: v1.0 Lancering — Zelfregistratie + Woning + AI Huismeester + PDF's
 
 ### Stap 1: Zelfregistratie
-- [ ] Backend: POST /api/auth/register route (naam, email, wachtwoord, bcrypt hash)
-- [ ] Backend: validatie — email al in gebruik, wachtwoord minimaal 8 tekens
-- [ ] Frontend: /registreren pagina met formulier (naam, email, wachtwoord, herhaal wachtwoord)
-- [ ] Frontend: link van login naar registreren en vice versa
-- [ ] Na registratie: automatisch inloggen + redirect naar onboarding
-- [ ] Nieuw account krijgt standaard rol 'user' en Free-abonnement
+- [x] Backend: POST /api/auth/register route (naam, email, wachtwoord, bcrypt hash)
+- [x] Backend: validatie — email al in gebruik, wachtwoord minimaal 8 tekens
+- [x] Frontend: /registreren pagina met formulier (naam, email, wachtwoord, herhaal wachtwoord)
+- [x] Frontend: link van login naar registreren en vice versa
+- [x] Na registratie: automatisch inloggen + redirect naar onboarding
+- [x] Nieuw account krijgt standaard rol 'user' en Free-abonnement
 
 ### Stap 2: Woning toevoegen door klant
-- [ ] Backend: properties.createOwn procedure — klant voegt eigen woning toe
-- [ ] Backend: klant ziet alleen eigen woningen (userId-check)
-- [ ] Frontend: onboarding-flow na eerste login — stap 1: woning toevoegen
-- [ ] Frontend: woning-toevoegen formulier in client portaal (adres, type, bouwjaar, m²)
-- [ ] Frontend: lege staat in client dashboard met CTA "Voeg uw eerste woning toe"
+- [x] Backend: properties.createOwn procedure — klant voegt eigen woning toe
+- [x] Backend: klant ziet alleen eigen woningen (userId-check)
+- [x] Frontend: onboarding-flow na eerste login — stap 1: woning toevoegen
+- [x] Frontend: woning-toevoegen formulier in client portaal (adres, type, bouwjaar, m²)
+- [x] Frontend: lege staat in client dashboard met CTA "Voeg uw eerste woning toe"
 
 ### Stap 3: AI Huismeester
-- [ ] Backend: tRPC aiHuismeester.chat procedure (streaming, paspoortcontext)
-- [ ] Backend: chat-history opslaan per woning per gebruiker (schema uitbreiden)
-- [ ] Frontend: AI Huismeester tab in client portaal per woning
-- [ ] Frontend: chatinterface met berichtgeschiedenis, invoerveld, streaming responses
-- [ ] Frontend: tier-gating — Free max 3 vragen/maand, Digital+ onbeperkt
-- [ ] Frontend: vraagenteller voor Free-gebruikers
+- [x] Backend: tRPC aiHuismeester.chat procedure (streaming, paspoortcontext)
+- [x] Backend: chat-history opslaan per woning per gebruiker (schema uitbreiden)
+- [x] Frontend: AI Huismeester tab in client portaal per woning
+- [x] Frontend: chatinterface met berichtgeschiedenis, invoerveld, streaming responses
+- [x] Frontend: tier-gating — Free max 3 vragen/maand, Digital+ onbeperkt
+- [x] Frontend: vraagenteller voor Free-gebruikers
 
 ### Stap 4: PDF-rapporten
-- [ ] Backend: /api/pdf/onderhoud/:propertyId — Jaarlijks Onderhoudsrapport PDF
-- [ ] Backend: /api/pdf/inspectie/:propertyId — Technisch Inspectierapport PDF
-- [ ] Frontend: download-knoppen in Downloads-tab voor beide rapporten
+- [x] Backend: /api/pdf/onderhoud/:propertyId — Jaarlijks Onderhoudsrapport PDF
+- [x] Backend: /api/pdf/inspectie/:propertyId — Technisch Inspectierapport PDF
+- [x] Frontend: download-knoppen in Downloads-tab voor beide rapporten
 
 ### Stap 5: Wachtwoord vergeten / reset
-- [ ] Backend: POST /api/auth/forgot-password (genereert reset-token, slaat op in DB)
-- [ ] Backend: POST /api/auth/reset-password (valideert token, update wachtwoord)
-- [ ] Database: passwordResetToken + passwordResetExpiry kolommen op users tabel
-- [ ] Frontend: /wachtwoord-vergeten pagina
-- [ ] Frontend: /wachtwoord-reset?token=... pagina
-- [ ] Frontend: link "Wachtwoord vergeten?" op login pagina
+- [x] Backend: POST /api/auth/forgot-password (genereert reset-token, slaat op in DB)
+- [x] Backend: POST /api/auth/reset-password (valideert token, update wachtwoord)
+- [x] Database: passwordResetToken + passwordResetExpiry kolommen op users tabel
+- [x] Frontend: /wachtwoord-vergeten pagina
+- [x] Frontend: /wachtwoord-reset?token=... pagina
+- [x] Frontend: link "Wachtwoord vergeten?" op login pagina
+
+## Fase 11: Beveiliging + Juridisch + Admin Stats
+
+### Beveiliging (Ownership checks)
+- [x] Backend: inspections.listByProperty — ownership check voor niet-admin gebruikers
+- [x] Backend: maintenance.listIssues — ownership check voor niet-admin gebruikers
+- [x] Backend: maintenance.listPlanning — ownership check voor niet-admin gebruikers
+- [x] Backend: documents.list — ownership check voor niet-admin gebruikers
+
+### AI Huismeester persistentie + quota
+- [x] Database: chatMessages tabel aangemaakt (history per woning per gebruiker)
+- [x] Database: aiChatUsage tabel aangemaakt (maandelijkse quota tracking)
+- [x] Backend: chat history opslaan bij elke vraag/antwoord
+- [x] Backend: Free-tier maandlimiet (3 vragen/maand) gehandhaafd server-side
+- [x] Frontend: chat history laden bij openen van AI Huismeester
+- [x] Frontend: vraagenteller tonen voor Free-tier gebruikers
+- [x] Frontend: limiet-bereikt banner met upgrade-CTA
+
+### Juridisch (AVG/GDPR)
+- [x] Privacyverklaring pagina (/privacy) — volledig AVG-conform
+- [x] Algemene Voorwaarden pagina (/algemene-voorwaarden) — met prijstabel en AI disclaimer
+- [x] Footer homepage: links naar Privacyverklaring + Algemene Voorwaarden
+- [x] Registratiepagina: akkoord-tekst met links naar Voorwaarden en Privacy
+
+### Admin Dashboard
+- [x] Abonnementen overzicht widget: actieve woningen per tier + geschatte MRR
+- [x] Tests: 27 vitest tests geslaagd (inclusief AI quota tests)
+- [x] TypeScript: geen fouten

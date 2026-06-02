@@ -1,11 +1,23 @@
 import { Router } from "express";
 import { getDb } from "./db";
-import { properties, customers, inspections, maintenanceIssues, maintenancePlanning } from "../drizzle/schema";
-import { eq, and, desc } from "drizzle-orm";
+import {
+  properties,
+  customers,
+  inspections,
+  maintenanceIssues,
+  maintenancePlanning,
+  chatMessages,
+  aiChatUsage,
+} from "../drizzle/schema";
+import { eq, and, desc, asc } from "drizzle-orm";
 import { verifySessionToken, COOKIE_NAME } from "./context";
 import { users } from "../drizzle/schema";
+import { PLAN_FEATURES, type SubscriptionTier } from "../shared/const";
 
 export const chatRouter = Router();
+
+// Free-tier monthly limit
+const FREE_TIER_MONTHLY_LIMIT = 3;
 
 // ─── Build property context for AI ───────────────────────────────────────────
 async function buildPropertyContext(propertyId: number): Promise<string> {
@@ -124,6 +136,67 @@ async function buildPropertyContext(propertyId: number): Promise<string> {
   return lines.join("\n");
 }
 
+// ─── GET /api/chat/:propertyId/history — load chat history ───────────────────
+chatRouter.get("/:propertyId/history", async (req, res) => {
+  try {
+    const token = req.cookies?.[COOKIE_NAME];
+    if (!token) { res.status(401).json({ error: "Niet ingelogd" }); return; }
+    const payload = await verifySessionToken(token);
+    if (!payload) { res.status(401).json({ error: "Sessie verlopen" }); return; }
+
+    const db = await getDb();
+    if (!db) { res.status(500).json({ error: "Database niet beschikbaar" }); return; }
+
+    const propertyId = parseInt(req.params.propertyId);
+    if (isNaN(propertyId)) { res.status(400).json({ error: "Ongeldig woning-ID" }); return; }
+
+    // Ownership check
+    const [prop] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
+    if (!prop) { res.status(404).json({ error: "Woning niet gevonden" }); return; }
+
+    const [userRow] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
+    if (!userRow) { res.status(401).json({ error: "Gebruiker niet gevonden" }); return; }
+
+    if (userRow.role !== "admin") {
+      const [cust] = await db
+        .select()
+        .from(customers)
+        .where(and(eq(customers.id, prop.customerId), eq(customers.userId, userRow.id)))
+        .limit(1);
+      if (!cust) { res.status(403).json({ error: "Geen toegang" }); return; }
+    }
+
+    // Load last 50 messages
+    const history = await db
+      .select()
+      .from(chatMessages)
+      .where(and(eq(chatMessages.propertyId, propertyId), eq(chatMessages.userId, payload.userId)))
+      .orderBy(asc(chatMessages.createdAt))
+      .limit(50);
+
+    // Get monthly usage for Free tier
+    const monthYear = new Date().toISOString().slice(0, 7);
+    const [usage] = await db
+      .select()
+      .from(aiChatUsage)
+      .where(and(
+        eq(aiChatUsage.userId, payload.userId),
+        eq(aiChatUsage.propertyId, propertyId),
+        eq(aiChatUsage.monthYear, monthYear)
+      ))
+      .limit(1);
+
+    res.json({
+      messages: history,
+      monthlyUsage: usage?.questionCount ?? 0,
+      monthlyLimit: PLAN_FEATURES[prop.subscriptionType as SubscriptionTier]?.aiHuismeesterUitgebreid ? null : FREE_TIER_MONTHLY_LIMIT,
+    });
+  } catch (err) {
+    console.error("[Chat History] Error:", err);
+    res.status(500).json({ error: "Interne fout" });
+  }
+});
+
 // ─── POST /api/chat/:propertyId — streaming SSE ───────────────────────────────
 chatRouter.post("/:propertyId", async (req, res) => {
   try {
@@ -138,12 +211,12 @@ chatRouter.post("/:propertyId", async (req, res) => {
       res.status(401).json({ error: "Sessie verlopen" });
       return;
     }
-    const db2 = await getDb();
-    if (!db2) {
+    const db = await getDb();
+    if (!db) {
       res.status(500).json({ error: "Database niet beschikbaar" });
       return;
     }
-    const [userRow] = await db2.select().from(users).where(eq(users.id, payload.userId)).limit(1);
+    const [userRow] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
     if (!userRow) {
       res.status(401).json({ error: "Gebruiker niet gevonden" });
       return;
@@ -157,12 +230,6 @@ chatRouter.post("/:propertyId", async (req, res) => {
     }
 
     // Verify property access
-    const db = await getDb();
-    if (!db) {
-      res.status(500).json({ error: "Database niet beschikbaar" });
-      return;
-    }
-
     const [prop] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
     if (!prop) {
       res.status(404).json({ error: "Woning niet gevonden" });
@@ -181,10 +248,84 @@ chatRouter.post("/:propertyId", async (req, res) => {
       }
     }
 
-    const { messages } = req.body as { messages: Array<{ role: string; content: string }> };
+    // Check AI feature access
+    const features = PLAN_FEATURES[prop.subscriptionType as SubscriptionTier];
+    const hasAI = features?.aiHuismeesterBeperkt || features?.aiHuismeesterUitgebreid;
+    if (!hasAI) {
+      res.status(403).json({ error: "AI Huismeester is niet beschikbaar in uw huidige pakket" });
+      return;
+    }
+
+    // Check Free-tier monthly quota
+    const isFreeTier = !features?.aiHuismeesterUitgebreid;
+    const monthYear = new Date().toISOString().slice(0, 7);
+
+    if (isFreeTier) {
+      const [usage] = await db
+        .select()
+        .from(aiChatUsage)
+        .where(and(
+          eq(aiChatUsage.userId, user.id),
+          eq(aiChatUsage.propertyId, propertyId),
+          eq(aiChatUsage.monthYear, monthYear)
+        ))
+        .limit(1);
+
+      const currentCount = usage?.questionCount ?? 0;
+      if (currentCount >= FREE_TIER_MONTHLY_LIMIT) {
+        res.status(429).json({
+          error: `U heeft uw maandlimiet van ${FREE_TIER_MONTHLY_LIMIT} vragen bereikt. Upgrade naar Digital of hoger voor onbeperkte toegang.`,
+          limitReached: true,
+          monthlyLimit: FREE_TIER_MONTHLY_LIMIT,
+          monthlyUsage: currentCount,
+        });
+        return;
+      }
+    }
+
+    const { messages, userMessage } = req.body as {
+      messages: Array<{ role: string; content: string }>;
+      userMessage?: string;
+    };
     if (!messages || !Array.isArray(messages)) {
       res.status(400).json({ error: "Berichten ontbreken" });
       return;
+    }
+
+    // Save user message to history
+    const lastUserMsg = userMessage || messages[messages.length - 1]?.content;
+    if (lastUserMsg) {
+      await db.insert(chatMessages).values({
+        propertyId,
+        userId: user.id,
+        role: "user",
+        content: lastUserMsg,
+      });
+    }
+
+    // Update monthly usage counter
+    const [existingUsage] = await db
+      .select()
+      .from(aiChatUsage)
+      .where(and(
+        eq(aiChatUsage.userId, user.id),
+        eq(aiChatUsage.propertyId, propertyId),
+        eq(aiChatUsage.monthYear, monthYear)
+      ))
+      .limit(1);
+
+    if (existingUsage) {
+      await db
+        .update(aiChatUsage)
+        .set({ questionCount: existingUsage.questionCount + 1 })
+        .where(eq(aiChatUsage.id, existingUsage.id));
+    } else {
+      await db.insert(aiChatUsage).values({
+        userId: user.id,
+        propertyId,
+        monthYear,
+        questionCount: 1,
+      });
     }
 
     // Build context
@@ -242,13 +383,12 @@ RICHTLIJNEN:
     });
 
     if (!response.ok) {
-      const errText = await response.text();
       res.write(`data: ${JSON.stringify({ error: `AI fout: ${response.status}` })}\n\n`);
       res.end();
       return;
     }
 
-    // Stream the response
+    // Stream the response and collect full content for saving
     const reader = response.body?.getReader();
     if (!reader) {
       res.write(`data: ${JSON.stringify({ error: "Geen stream" })}\n\n`);
@@ -258,6 +398,7 @@ RICHTLIJNEN:
 
     const decoder = new TextDecoder();
     let buffer = "";
+    let fullContent = "";
 
     while (true) {
       const { done, value } = await reader.read();
@@ -278,6 +419,7 @@ RICHTLIJNEN:
             const parsed = JSON.parse(data);
             const delta = parsed.choices?.[0]?.delta?.content;
             if (delta) {
+              fullContent += delta;
               res.write(`data: ${JSON.stringify({ content: delta })}\n\n`);
             }
           } catch {
@@ -286,6 +428,24 @@ RICHTLIJNEN:
         }
       }
     }
+
+    // Save assistant response to history
+    if (fullContent) {
+      await db.insert(chatMessages).values({
+        propertyId,
+        userId: user.id,
+        role: "assistant",
+        content: fullContent,
+      });
+    }
+
+    // Send updated usage info
+    const newCount = (existingUsage?.questionCount ?? 0) + 1;
+    res.write(`data: ${JSON.stringify({
+      done: true,
+      monthlyUsage: newCount,
+      monthlyLimit: isFreeTier ? FREE_TIER_MONTHLY_LIMIT : null,
+    })}\n\n`);
 
     res.write("data: [DONE]\n\n");
     res.end();

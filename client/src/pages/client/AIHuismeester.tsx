@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import ClientLayout from "../../components/ClientLayout";
 import { trpc } from "../../lib/trpc";
-import { Bot, Send, User, Loader2, ArrowLeft, Sparkles, Home, Zap, FileText, Wrench } from "lucide-react";
+import { Bot, Send, User, Loader2, ArrowLeft, Sparkles, AlertCircle } from "lucide-react";
 import { PLAN_FEATURES, type SubscriptionTier } from "@shared/const";
 
 type Message = {
@@ -27,6 +27,9 @@ export default function AIHuismeester() {
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState("");
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [monthlyUsage, setMonthlyUsage] = useState(0);
+  const [monthlyLimit, setMonthlyLimit] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -38,28 +41,63 @@ export default function AIHuismeester() {
     ? PLAN_FEATURES[property.subscriptionType as SubscriptionTier]
     : null;
   const hasAI = (features?.aiHuismeesterBeperkt || features?.aiHuismeesterUitgebreid) ?? false;
+  const isFreeTier = hasAI && !features?.aiHuismeesterUitgebreid;
+
+  // Load chat history
+  useEffect(() => {
+    if (!property || historyLoaded) return;
+
+    fetch(`/api/chat/${propertyId}/history`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.messages && data.messages.length > 0) {
+          const loaded: Message[] = data.messages.map((m: any) => ({
+            id: m.id.toString(),
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            timestamp: new Date(m.createdAt),
+          }));
+          setMessages(loaded);
+        } else {
+          // Show welcome message if no history
+          setMessages([
+            {
+              id: "welcome",
+              role: "assistant",
+              content: `Goedendag! Ik ben uw AI Huismeester voor **${property.street} ${property.houseNumber}**.\n\nIk heb toegang tot het volledige woningpaspoort en kan u helpen met vragen over onderhoud, verduurzaming, technische kenmerken, subsidies en meer.\n\nWaar kan ik u mee helpen?`,
+              timestamp: new Date(),
+            },
+          ]);
+        }
+        setMonthlyUsage(data.monthlyUsage ?? 0);
+        setMonthlyLimit(data.monthlyLimit ?? null);
+        setHistoryLoaded(true);
+      })
+      .catch(() => {
+        // Fallback: show welcome message
+        if (property) {
+          setMessages([
+            {
+              id: "welcome",
+              role: "assistant",
+              content: `Goedendag! Ik ben uw AI Huismeester voor **${property.street} ${property.houseNumber}**.\n\nWaar kan ik u mee helpen?`,
+              timestamp: new Date(),
+            },
+          ]);
+        }
+        setHistoryLoaded(true);
+      });
+  }, [property, propertyId, historyLoaded]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Welcome message
-  useEffect(() => {
-    if (property && messages.length === 0) {
-      setMessages([
-        {
-          id: "welcome",
-          role: "assistant",
-          content: `Goedendag! Ik ben uw AI Huismeester voor **${property.street} ${property.houseNumber}**.\n\nIk heb toegang tot het volledige woningpaspoort en kan u helpen met vragen over onderhoud, verduurzaming, technische kenmerken, subsidies en meer.\n\nWaar kan ik u mee helpen?`,
-          timestamp: new Date(),
-        },
-      ]);
-    }
-  }, [property]);
+  const isLimitReached = monthlyLimit !== null && monthlyUsage >= monthlyLimit;
 
   const sendMessage = async (text?: string) => {
     const messageText = text || input.trim();
-    if (!messageText || isStreaming) return;
+    if (!messageText || isStreaming || isLimitReached) return;
 
     setInput("");
     setError("");
@@ -71,8 +109,8 @@ export default function AIHuismeester() {
       timestamp: new Date(),
     };
 
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
+    const updatedMessages = [...messages.filter((m) => m.id !== "welcome"), userMsg];
+    setMessages((prev) => [...prev.filter((m) => m.id !== "welcome"), userMsg]);
     setIsStreaming(true);
 
     const assistantMsgId = (Date.now() + 1).toString();
@@ -92,15 +130,18 @@ export default function AIHuismeester() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          messages: updatedMessages
-            .filter((m) => m.id !== "welcome")
-            .map((m) => ({ role: m.role, content: m.content })),
+          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+          userMessage: messageText,
         }),
         signal: abortRef.current.signal,
       });
 
       if (!response.ok) {
         const err = await response.json();
+        if (err.limitReached) {
+          setMonthlyUsage(err.monthlyUsage);
+          setMonthlyLimit(err.monthlyLimit);
+        }
         throw new Error(err.error || "Verbindingsfout");
       }
 
@@ -134,6 +175,11 @@ export default function AIHuismeester() {
                   )
                 );
               }
+              // Update usage counter from server response
+              if (parsed.done) {
+                if (parsed.monthlyUsage !== undefined) setMonthlyUsage(parsed.monthlyUsage);
+                if (parsed.monthlyLimit !== undefined) setMonthlyLimit(parsed.monthlyLimit);
+              }
             } catch (parseErr: any) {
               if (parseErr.message !== "Unexpected end of JSON input") {
                 throw parseErr;
@@ -160,7 +206,7 @@ export default function AIHuismeester() {
     }
   };
 
-  if (!property) {
+  if (!property || !historyLoaded) {
     return (
       <ClientLayout title="AI Huismeester">
         <div className="flex items-center justify-center py-20">
@@ -193,6 +239,8 @@ export default function AIHuismeester() {
     );
   }
 
+  const remainingQuestions = monthlyLimit !== null ? Math.max(0, monthlyLimit - monthlyUsage) : null;
+
   return (
     <ClientLayout title="AI Huismeester">
       <div className="flex flex-col h-[calc(100vh-120px)] max-w-2xl mx-auto">
@@ -210,9 +258,25 @@ export default function AIHuismeester() {
               {property.street} {property.houseNumber}
             </p>
           </div>
-          <div className="ml-auto flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            Online
+          <div className="ml-auto flex items-center gap-2">
+            {/* Free-tier question counter */}
+            {isFreeTier && monthlyLimit !== null && (
+              <div className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                remainingQuestions === 0
+                  ? "text-red-600 bg-red-50"
+                  : remainingQuestions === 1
+                  ? "text-amber-600 bg-amber-50"
+                  : "text-slate-500 bg-slate-100"
+              }`}>
+                <span>{remainingQuestions} van {monthlyLimit} vragen over</span>
+              </div>
+            )}
+            {!isLimitReached && (
+              <div className="flex items-center gap-1 text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                Online
+              </div>
+            )}
           </div>
         </div>
 
@@ -259,8 +323,8 @@ export default function AIHuismeester() {
             </div>
           ))}
 
-          {/* Suggested questions (only when empty or just welcome) */}
-          {messages.length <= 1 && !isStreaming && (
+          {/* Suggested questions (only when just welcome message) */}
+          {messages.length <= 1 && !isStreaming && !isLimitReached && (
             <div className="pt-2">
               <p className="text-xs text-slate-400 mb-3 text-center">Veelgestelde vragen</p>
               <div className="grid grid-cols-1 gap-2">
@@ -277,6 +341,24 @@ export default function AIHuismeester() {
             </div>
           )}
 
+          {/* Limit reached banner */}
+          {isLimitReached && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-center">
+              <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-amber-800 mb-1">Maandlimiet bereikt</p>
+              <p className="text-xs text-amber-700 mb-3">
+                U heeft uw {monthlyLimit} gratis vragen voor deze maand gebruikt. Upgrade naar Digital of hoger voor onbeperkte toegang.
+              </p>
+              <Link
+                href="/abonnementen"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E3A5F] text-white text-xs font-semibold rounded-xl hover:bg-[#162d4a] transition"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Abonnement upgraden
+              </Link>
+            </div>
+          )}
+
           {error && (
             <div className="text-center text-xs text-red-500 bg-red-50 rounded-xl px-4 py-2">
               {error}
@@ -288,38 +370,49 @@ export default function AIHuismeester() {
 
         {/* Input */}
         <div className="border-t border-slate-100 pt-4">
-          <div className="flex gap-2 items-end">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Stel een vraag over uw woning..."
-              rows={1}
-              disabled={isStreaming}
-              className="flex-1 resize-none px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]/40 transition disabled:opacity-50 max-h-32"
-              style={{ minHeight: "48px" }}
-              onInput={(e) => {
-                const t = e.target as HTMLTextAreaElement;
-                t.style.height = "auto";
-                t.style.height = Math.min(t.scrollHeight, 128) + "px";
-              }}
-            />
-            <button
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || isStreaming}
-              className="w-12 h-12 bg-[#1E3A5F] hover:bg-[#162d4a] disabled:opacity-40 text-white rounded-2xl flex items-center justify-center transition active:scale-95 flex-shrink-0"
-            >
-              {isStreaming ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-          <p className="text-xs text-slate-400 text-center mt-2">
-            AI Huismeester heeft toegang tot uw volledige Woningpaspoort™
-          </p>
+          {isLimitReached ? (
+            <div className="text-center text-xs text-slate-400">
+              Upgrade uw abonnement om door te gaan met de AI Huismeester.
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2 items-end">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Stel een vraag over uw woning..."
+                  rows={1}
+                  disabled={isStreaming}
+                  className="flex-1 resize-none px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F]/40 transition disabled:opacity-50 max-h-32"
+                  style={{ minHeight: "48px" }}
+                  onInput={(e) => {
+                    const t = e.target as HTMLTextAreaElement;
+                    t.style.height = "auto";
+                    t.style.height = Math.min(t.scrollHeight, 128) + "px";
+                  }}
+                />
+                <button
+                  onClick={() => sendMessage()}
+                  disabled={!input.trim() || isStreaming}
+                  className="w-12 h-12 bg-[#1E3A5F] hover:bg-[#162d4a] disabled:opacity-40 text-white rounded-2xl flex items-center justify-center transition active:scale-95 flex-shrink-0"
+                >
+                  {isStreaming ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-slate-400 text-center mt-2">
+                AI Huismeester heeft toegang tot uw volledige Woningpaspoort™
+                {isFreeTier && monthlyLimit !== null && remainingQuestions !== null && remainingQuestions > 0 && (
+                  <span className="ml-1 text-amber-600">· {remainingQuestions} vra{remainingQuestions === 1 ? "ag" : "gen"} resterend deze maand</span>
+                )}
+              </p>
+            </>
+          )}
         </div>
       </div>
     </ClientLayout>

@@ -259,3 +259,31 @@ export const passwordResetTokens = mysqlTable("passwordResetTokens", {
 
 export type PasswordResetToken = typeof passwordResetTokens.$inferSelect;
 export type InsertPasswordResetToken = typeof passwordResetTokens.$inferInsert;
+
+// ─── Chat Messages (AI Huismeester history) ───────────────────────────────────
+
+export const chatMessages = mysqlTable("chatMessages", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  userId: int("userId").notNull().references(() => users.id),
+  role: mysqlEnum("role", ["user", "assistant"]).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = typeof chatMessages.$inferInsert;
+
+// ─── AI Chat Usage (Free-tier quota tracking) ─────────────────────────────────
+
+export const aiChatUsage = mysqlTable("aiChatUsage", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  monthYear: varchar("monthYear", { length: 7 }).notNull(), // e.g. "2026-06"
+  questionCount: int("questionCount").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiChatUsage = typeof aiChatUsage.$inferSelect;
+export type InsertAiChatUsage = typeof aiChatUsage.$inferInsert;

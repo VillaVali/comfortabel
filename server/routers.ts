@@ -366,9 +366,16 @@ const propertiesRouter = t.router({
 const inspectionsRouter = t.router({
   listByProperty: protectedProcedure
     .input(z.object({ propertyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Ownership check for non-admin
+      if (ctx.user.role !== "admin") {
+        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
+        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
+      }
       return db
         .select()
         .from(inspections)
@@ -523,9 +530,16 @@ const inspectionsRouter = t.router({
 const maintenanceRouter = t.router({
   listIssues: protectedProcedure
     .input(z.object({ propertyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Ownership check for non-admin
+      if (ctx.user.role !== "admin") {
+        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
+        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
+      }
       return db
         .select()
         .from(maintenanceIssues)
@@ -573,9 +587,16 @@ const maintenanceRouter = t.router({
 
   listPlanning: protectedProcedure
     .input(z.object({ propertyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Ownership check for non-admin
+      if (ctx.user.role !== "admin") {
+        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
+        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
+      }
       return db
         .select()
         .from(maintenancePlanning)
@@ -689,9 +710,16 @@ const usersRouter = t.router({
 const documentsRouter = t.router({
   list: protectedProcedure
     .input(z.object({ propertyId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Ownership check for non-admin
+      if (ctx.user.role !== "admin") {
+        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
+        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
+      }
       return db
         .select()
         .from(documents)
