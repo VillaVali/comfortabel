@@ -853,7 +853,7 @@ const invitationsRouter = t.router({
         expiresAt,
       });
 
-      const inviteUrl = `${input.origin}/registreren?invite=${token}`;
+      const inviteUrl = `${input.origin}/registreren?invite=${token}&email=${encodeURIComponent(customer.email)}`;
       const customerName = customer.type === "bedrijf" || customer.type === "vastgoed"
         ? (customer.companyName || customer.email)
         : `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.email;

@@ -2,8 +2,8 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Sender address — update to your verified Resend domain when ready
-const FROM = "MijnComfortabel <noreply@mijncomfort-a8mtknzo.manus.space>";
+// Sender address — uses env var RESEND_FROM if set, otherwise falls back to Resend's test sender
+const FROM = process.env.RESEND_FROM || "MijnComfortabel <onboarding@resend.dev>";
 
 // ── Generic send helper ────────────────────────────────────────────────────────
 export async function sendEmail({

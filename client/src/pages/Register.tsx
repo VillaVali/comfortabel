@@ -13,6 +13,17 @@ export default function Register() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Read invite token from URL query param
+  const inviteToken = new URLSearchParams(window.location.search).get("invite") || "";
+
+  useEffect(() => {
+    if (inviteToken) {
+      // Pre-fill email from invite if provided in URL
+      const inviteEmail = new URLSearchParams(window.location.search).get("email");
+      if (inviteEmail) setEmail(decodeURIComponent(inviteEmail));
+    }
+  }, [inviteToken]);
+
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
       window.location.href = "/mijn/onboarding";
@@ -46,7 +57,7 @@ export default function Register() {
     }
 
     setSubmitting(true);
-    const result = await register(name, email, password);
+    const result = await register(name, email, password, inviteToken || undefined);
     if (result.error) {
       setError(result.error);
       setSubmitting(false);

@@ -77,7 +77,7 @@ authRouter.post("/login", async (req, res) => {
 // POST /api/auth/register
 authRouter.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body as { name?: string; email?: string; password?: string };
+    const { name, email, password, inviteToken } = req.body as { name?: string; email?: string; password?: string; inviteToken?: string };
     if (!name || !email || !password) {
       return res.status(400).json({ error: "Naam, e-mail en wachtwoord zijn verplicht" });
     }
@@ -112,16 +112,32 @@ authRouter.post("/register", async (req, res) => {
     });
     const userId = Number((result[0] as any).insertId);
 
-    // Also create a customer record linked to this user
-    const { customers } = await import("../drizzle/schema");
-    await db.insert(customers).values({
-      userId,
-      email: email.toLowerCase().trim(),
-      firstName: name.trim().split(" ")[0] || name.trim(),
-      lastName: name.trim().split(" ").slice(1).join(" ") || null,
-      type: "particulier",
-      createdBy: userId,
-    });
+    // Handle invite token — link user to existing customer
+    const { customers, invitations } = await import("../drizzle/schema");
+    if (inviteToken) {
+      const now = new Date();
+      const inviteRows = await db.select().from(invitations)
+        .where(and(eq(invitations.token, inviteToken), gt(invitations.expiresAt, now)))
+        .limit(1);
+      const invite = inviteRows[0];
+      if (invite && !invite.acceptedAt) {
+        // Link user to the invited customer
+        await db.update(customers).set({ userId }).where(eq(customers.id, invite.customerId));
+        // Mark invitation as accepted
+        await db.update(invitations).set({ acceptedAt: now }).where(eq(invitations.id, invite.id));
+        console.log(`[Auth] Invite accepted: user ${userId} linked to customer ${invite.customerId}`);
+      }
+    } else {
+      // No invite — create a new customer record linked to this user
+      await db.insert(customers).values({
+        userId,
+        email: email.toLowerCase().trim(),
+        firstName: name.trim().split(" ")[0] || name.trim(),
+        lastName: name.trim().split(" ").slice(1).join(" ") || null,
+        type: "particulier",
+        createdBy: userId,
+      });
+    }
 
     // Auto-login: create session
     const token = await createSessionToken(userId);
