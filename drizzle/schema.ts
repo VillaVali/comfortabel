@@ -303,3 +303,27 @@ export const invitations = mysqlTable("invitations", {
 
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertInvitation = typeof invitations.$inferInsert;
+
+// ─── Email Logs (marketing sequentie tracking) ────────────────────────────────
+export const emailLogs = mysqlTable("emailLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  emailType: varchar("emailType", { length: 64 }).notNull(), // "welcome", "day3", "day7", "day14", "day30", "monthly_score"
+  sentAt: timestamp("sentAt").defaultNow().notNull(),
+  resendId: varchar("resendId", { length: 128 }), // Resend message ID for tracking
+  metadata: text("metadata"), // JSON: extra context (propertyId, score, etc.)
+});
+export type EmailLog = typeof emailLogs.$inferSelect;
+export type InsertEmailLog = typeof emailLogs.$inferInsert;
+
+// ─── Referral Codes (activatiecodes per lid) ──────────────────────────────────
+export const referralCodes = mysqlTable("referralCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id).unique(),
+  code: varchar("code", { length: 20 }).notNull().unique(), // e.g. "COMF-A3X9"
+  referredBy: int("referredBy").references(() => users.id), // wie heeft deze user uitgenodigd
+  referralCount: int("referralCount").default(0).notNull(), // hoeveel mensen via deze code
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type InsertReferralCode = typeof referralCodes.$inferInsert;

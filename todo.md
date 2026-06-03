@@ -196,3 +196,36 @@
 - [ ] Overige Fase 3: abonnementsbeheer per woning (upgrade/downgrade UI)
 - [x] Tests: Resend integratie valideren (33 tests geslaagd)
 - [x] TypeScript: geen fouten
+
+## Fase 13: E-mail Marketing & Activatie Engine
+
+### Database
+- [ ] Database: emailLogs tabel (bijhouden welke e-mails verstuurd zijn per gebruiker + dag)
+- [ ] Database: referralCodes tabel (unieke activatiecodes per lid, tracking wie wie uitnodigde)
+
+### Welkomstsequentie (geautomatiseerde e-mailflow)
+- [ ] E-mail dag 0: welkomstmail met persoonlijke activatiecode + CTA woning toevoegen
+- [ ] E-mail dag 3: "Uw dossier is X% compleet" — dossier volledigheid stimuleren
+- [ ] E-mail dag 7: gepersonaliseerde AI Huismeester tip op basis van woningtype/bouwjaar
+- [ ] E-mail dag 14: woningscore update + vergelijking met gemiddelde
+- [ ] E-mail dag 30: maandelijkse samenvatting + referral uitnodiging
+
+### Dossier volledigheid score
+- [ ] Backend: berekening dossier-volledigheid per woning (% velden ingevuld, 0-100)
+- [ ] Frontend: volledigheidsbar in client dashboard per woning
+- [ ] Backend: procedure om volledigheidspercentage op te halen
+
+### Referral / activatiecodes
+- [ ] Backend: unieke referralcode genereren bij registratie (bijv. COMF-A3X9)
+- [ ] Backend: referral tracking — wie heeft wie uitgenodigd, conversie bijhouden
+- [ ] Frontend: "Nodig een vriend uit" sectie in client portaal met persoonlijke code
+- [ ] Frontend: activatiecode zichtbaar op dashboard met kopieerknop + deel-link
+
+### Scheduled e-mail jobs (Heartbeat)
+- [ ] Heartbeat job: dagelijks controleren welke gebruikers dag 3/7/14/30 e-mail moeten ontvangen
+- [ ] Heartbeat job: maandelijkse woningscore update e-mail naar alle actieve gebruikers
+
+### Admin marketing dashboard
+- [ ] Admin: activatie-funnel widget (aangemeld → woning toegevoegd → actief na 7 dagen)
+- [ ] Admin: referral leaderboard (wie heeft meeste leden aangebracht)
+- [ ] Admin: e-mail log overzicht (welke e-mails verstuurd per gebruiker)
