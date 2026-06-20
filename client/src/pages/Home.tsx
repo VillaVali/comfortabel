@@ -27,17 +27,17 @@ const TIER_ICONS: Record<SubscriptionTier, React.ReactNode> = {
 };
 
 export default function Home() {
-  const { loading, isAuthenticated, isAdmin } = useAuth();
+  const { loading, isAuthenticated, isStaff } = useAuth();
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      if (isAdmin) {
+      if (isStaff) {
         window.location.href = "/admin";
       } else {
         window.location.href = "/mijn";
       }
     }
-  }, [loading, isAuthenticated, isAdmin]);
+  }, [loading, isAuthenticated, isStaff]);
 
   if (loading) {
     return (

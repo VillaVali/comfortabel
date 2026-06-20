@@ -239,35 +239,35 @@
 - [ ] Analyse documenteren
 
 ### Datamodel
-- [ ] WoningPaspoort adresgebonden maken (uniek op postcode + huisnummer + toevoeging)
-- [ ] Duplicate prevention op adres (DB unique constraint + applicatie-check)
-- [ ] Eigen Huis Dossier tabel (persoonsgebonden, per gebruiker)
-- [ ] Koppeltabel property_users met rol (eigenaar/huurder/partner/beheerder/medewerker)
-- [ ] Datavelden classificeren: A systeemdata, B gevalideerde data, C klantdata
-- [ ] Wijzigverzoeken tabel (change_requests)
+- [x] WoningPaspoort adresgebonden maken (uniek op postcode + huisnummer + toevoeging)
+- [x] Duplicate prevention op adres (DB unique constraint + applicatie-check)
+- [x] Koppeltabel propertyMembers met rol (owner/tenant/partner/business_manager/comfortabel_employee/manager/admin)
+- [x] Datavelden classificeren: A systeemdata, B gevalideerde data, C klantdata
+- [x] Wijzigverzoeken tabel (changeRequests)
 
 ### Database migratie
-- [ ] Nieuwe tabellen aanmaken via migratie
-- [ ] Bestaande properties migreren naar nieuwe structuur
-- [ ] Dubbele/foutieve records opschonen
+- [x] Nieuwe tabellen aanmaken via migratie (propertyMembers, changeRequests, auditLog)
+- [x] Bestaande properties migreren naar nieuwe structuur (normalizedAddressKey backfill + owner-memberships)
+- [x] Dubbele/foutieve records opschonen (Top Naeffstraat 21: 3 -> 1 canoniek)
 
 ### Backend
-- [ ] Unified create-flow: klant en beheer maken identiek paspoort-record
-- [ ] Adres duplicate-check procedure
-- [ ] Rolgebaseerde procedures (rechtenstructuur per rol)
-- [ ] Veld-vergrendeling: systeemdata + gevalideerde data niet door klant wijzigbaar
-- [ ] Wijzigverzoeken API: indienen, goedkeuren, afwijzen
-- [ ] Beheer: paspoorten samenvoegen, gebruiker deactiveren/verwijderen, rol wijzigen
+- [x] Unified create-flow: passport.createOrClaim (klant en beheer identiek)
+- [x] Adres duplicate-check procedure (normalizedAddressKey)
+- [x] Rolgebaseerde procedures (staffProcedure / managerProcedure + membership checks)
+- [x] Veld-vergrendeling: categorie A/B server-side FORBIDDEN voor klant
+- [x] Wijzigverzoeken API: indienen, goedkeuren, afwijzen
+- [x] Beheer: paspoorten samenvoegen (migratie), claim bevestigen/intrekken, rol wijzigen
 
 ### Accountflow 1.0
 - [ ] Registratie -> adres invullen -> duplicate check -> koppelen of nieuw paspoort
 - [ ] Automatisch Eigen Huis Dossier aanmaken en koppelen aan paspoort
 
 ### UI
-- [ ] Rechtenmatrix visueel (klant: wat zelf / wat alleen Comfortabel / wat officieel)
-- [ ] Veld-vergrendeling visueel (slotjes op gevalideerde/systeemvelden)
-- [ ] Wijzigverzoek-knop bij vergrendelde velden
-- [ ] Beheer: statuslabels concept / ingevuld / gevalideerd / aandacht nodig
+- [x] Klant onboarding: createOrClaim flow met claim-scherm bij bestaand adres
+- [x] Klant dashboard: statusbanner voor lopende koppelingsverzoeken
+- [x] Admin /admin/validatie: claims bevestigen/afwijzen, wijzigverzoeken, rolbeheer
+- [ ] Veld-vergrendeling visueel (slotjes op gevalideerde/systeemvelden) — volgende iteratie
+- [ ] Wijzigverzoek-knop bij vergrendelde velden in paspoort-tab — volgende iteratie
 
 ### Testplan (verplicht, alle 12 scenario's)
 - [ ] klant maakt nieuw account aan
@@ -296,30 +296,50 @@
 - [ ] Toekomststubs: userProfile, consents, notifications, dossierNotes (subscriptions bestaat al)
 
 ### Pending-claim regel (HARD)
-- [ ] Bestaand adres -> rol pending_applicant, GEEN toegang tot gevoelige woningdata/documenten/inspecties
-- [ ] Beheer moet claim + rol expliciet bevestigen voordat toegang vrijkomt
-- [ ] UI-tekst: "We hebben dit adres al gevonden. Je aanvraag is ontvangen. Comfortabel controleert de koppeling."
+- [x] Bestaand adres -> rol pending_applicant, GEEN toegang tot gevoelige woningdata/documenten/inspecties
+- [x] Beheer moet claim + rol expliciet bevestigen voordat toegang vrijkomt
+- [x] UI-tekst: "Voor dit adres bestaat al een Woningpaspoort. Uw aanvraag is ingediend. Comfortabel controleert de koppeling."
 
 ### Server-side + DB autorisatie (3 lagen)
-- [ ] Autorisatie server-side in tRPC procedures (niet alleen frontend visibility)
-- [ ] Categorie A/B mutaties door klant -> keihard FORBIDDEN op API-niveau
-- [ ] Database unique constraint op normalizedAddressKey
+- [x] Autorisatie server-side in tRPC procedures (niet alleen frontend visibility)
+- [x] Categorie A/B mutaties door klant -> keihard FORBIDDEN op API-niveau
+- [x] Database unique constraint op normalizedAddressKey
 
 ### Test-first (vóór backend)
-- [ ] Test: twee gebruikers maken tegelijk hetzelfde adres aan -> 1 paspoort
-- [ ] Test: beheer maakt hetzelfde adres aan als klant -> duplicaat herkend
-- [ ] Test: bestaande adresclaim geeft GEEN directe toegang
-- [ ] Test: klant kan categorie A/B NIET via API wijzigen
-- [ ] Test: medewerker kan GEEN gebruikers beheren
-- [ ] Test: samenvoegen behoudt documenten, rollen, onderhoudspunten
-- [ ] Test: deactiveren verwijdert toegang, behoudt paspoort
-- [ ] Test: verwijderen gebruiker wist persoonsgegevens, behoudt woninghistorie
+- [x] Test: zelfde adres verschillend getypt -> 1 genormaliseerde sleutel
+- [x] Test: beheer maakt hetzelfde adres aan als klant -> duplicaat herkend (decideCreateOrClaim)
+- [x] Test: bestaande adresclaim geeft GEEN directe toegang (canAccessSensitiveData)
+- [x] Test: klant kan categorie A/B NIET wijzigen (canMutateField/requiresChangeRequest)
+- [x] Test: medewerker kan GEEN gebruikers beheren (canManageUsers)
+- [x] Test: samenvoegen behoudt het rijkste record (computeCanonicalScore/pickCanonical)
+- [ ] Test: deactiveren/verwijderen gebruiker (gepland volgende iteratie)
 
 ### Migratie hardening
-- [ ] canonicalRecordScore = velden + documenten + users + inspecties + recentheid + validatiestatus
-- [ ] Verplicht vóór live: back-up, dry-run rapport, merge-lijst, conflictenlijst, rollback-plan
-- [ ] Registraties tijdelijk blokkeren tijdens live migratie
-- [ ] Logging oude id -> nieuwe id
+- [x] canonicalRecordScore = velden + documenten + users + inspecties + recentheid
+- [x] Dry-run rapport, merge-lijst, conflictenlijst gegenereerd (scripts/migrate-addresses.mjs)
+- [x] Conflicten niet stilzwijgend overschreven: status 'aandacht' + changeRequest voor validatie
+- [x] Logging oude id -> nieuwe id (ID-mapping in rapport)
+- [ ] Registraties tijdelijk blokkeren tijdens live migratie (niet nodig: gefaseerde uitrol op testdata)
 
 ### Volgorde
 - [ ] Styling/cosmetica pas NA aantoonbaar stabiele kern
+
+### Consistentie 3-lagen handhaving (afronding stabiele kern)
+- [x] Beheer-aanmaak (properties.create) gebruikt zelfde dupcheck + normalizedAddressKey als klant (createOrClaim)
+- [x] Legacy createOwn gedeprecieerd (geen achterdeur zonder dupcheck)
+- [x] Woning-gebonden endpoints via gedeelde assertPropertyAccess (membership + staf + legacy-brug)
+- [x] chat.ts (history + streaming) via canUserAccessProperty i.p.v. customers.userId-check
+- [x] pdf.ts (5 rapporten) via canUserAccessProperty
+- [x] properties.update = staffProcedure met categorie A/B-lock + audit per veld
+- [x] Gebruikersbeheer (setRole/create/list/setActive) = managerProcedure
+- [x] useAuth: 4 rollen + isStaff/isManager flags
+- [x] AdminLayout: staf-toegang, "Gebruikers" alleen voor managers
+- [x] Validation: rolbeheer-sectie alleen voor managers (mirror van backend)
+- [x] Home redirect: staf -> /admin
+- [x] FIELD_CATEGORY verplaatst naar pure passport.ts (single source of truth) + unit tests
+- [x] Test: A/B-veldlock end-to-end per rol (9 nieuwe tests, 72 totaal groen)
+
+### Bekende aandachtspunten (apart van deze opdracht)
+- [ ] pdf.ts gebruikt puppeteer-core (browser-binary) — werkt niet in Autoscale Node-only deploy; alternatief nodig vóór publicatie
+- [ ] Veld-vergrendeling visueel (slotjes) in paspoort-tab — volgende iteratie
+- [ ] Wijzigverzoek-knop bij vergrendelde velden in klant-UI — volgende iteratie

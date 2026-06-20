@@ -15,9 +15,20 @@ import {
   maintenancePlanning,
   documents,
   invitations,
+  propertyMembers,
+  changeRequests,
 } from "../drizzle/schema";
 import { sendInvitationEmail } from "./email";
 import { eq, desc, and, asc } from "drizzle-orm";
+import {
+  normalizeAddressKey,
+  canMutateField,
+  requiresChangeRequest,
+  fieldCategory,
+  type AccountRole,
+} from "./lib/passport";
+import { canUserAccessProperty, getMembership, assertPropertyAccess } from "./lib/membership";
+import { writeAudit, clientIp } from "./lib/audit";
 
 const t = initTRPC.context<TrpcContext>().create({ transformer: superjson });
 
@@ -30,6 +41,24 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx });
 });
+// Staff = admin | manager | comfortabel_employee (support/administration access).
+const staffProcedure = protectedProcedure.use(({ ctx, next }) => {
+  const r = ctx.user.role;
+  if (r !== "admin" && r !== "manager" && r !== "comfortabel_employee") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next({ ctx });
+});
+// Manager = admin | manager. Only these may write Category A/B fields directly and manage users.
+const managerProcedure = protectedProcedure.use(({ ctx, next }) => {
+  const r = ctx.user.role;
+  if (r !== "admin" && r !== "manager") {
+    throw new TRPCError({ code: "FORBIDDEN" });
+  }
+  return next({ ctx });
+});
+// Field category classification lives in ./lib/passport (single source of truth,
+// shared with unit tests). Use fieldCategory(field) below.
 
 // ─── Auth router ──────────────────────────────────────────────────────────────
 
@@ -187,15 +216,7 @@ const propertiesRouter = t.router({
         .where(eq(properties.id, input.id))
         .limit(1);
       if (!result[0]) throw new TRPCError({ code: "NOT_FOUND" });
-      // Access check for non-admin
-      if (ctx.user.role !== "admin") {
-        const cust = await db
-          .select()
-          .from(customers)
-          .where(and(eq(customers.id, result[0].customerId ?? -1), eq(customers.userId, ctx.user.id)))
-          .limit(1);
-        if (!cust[0]) throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      await assertPropertyAccess(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, input.id);
       return result[0];
     }),
 
@@ -222,14 +243,43 @@ const propertiesRouter = t.router({
         notes: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const result = await db.insert(properties).values(input);
-      return { id: Number(result[0].insertId) };
+      // Unified duplicate prevention: admin create uses the SAME normalized key
+      // and uniqueness rule as the client createOrClaim flow. One physical
+      // address = at most one WoningPaspoort.
+      const key = normalizeAddressKey({ postalCode: input.postalCode, houseNumber: input.houseNumber });
+      const existing = await db
+        .select({ id: properties.id })
+        .from(properties)
+        .where(eq(properties.normalizedAddressKey, key))
+        .limit(1);
+      if (existing[0]) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `Voor dit adres bestaat al een WoningPaspoort (#${existing[0].id}). Koppel de klant aan dat paspoort in plaats van een nieuw aan te maken.`,
+        });
+      }
+      const result = await db.insert(properties).values({
+        ...input,
+        normalizedAddressKey: key,
+        createdByRole: ctx.user.role,
+      } as any);
+      const newId = Number(result[0].insertId);
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "property.create",
+        entityType: "property",
+        entityId: newId,
+        previousValue: null,
+        newValue: { normalizedAddressKey: key, customerId: input.customerId },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { id: newId };
     }),
 
-  update: adminProcedure
+  update: staffProcedure
     .input(
       z.object({
         id: z.number(),
@@ -298,11 +348,40 @@ const propertiesRouter = t.router({
         subsidiesApplied: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       const { id, ...data } = input;
+      const role = ctx.user.role as AccountRole;
+      // Server-side three-layer enforcement: only admin/manager may write
+      // Category A/B (system/validated) fields directly. comfortabel_employee
+      // and any other actor reaching this procedure must use changeRequests.
+      const isManager = role === "admin" || role === "manager";
+      if (!isManager) {
+        for (const field of Object.keys(data)) {
+          const cat = fieldCategory(field);
+          if (cat === "A" || cat === "B") {
+            throw new TRPCError({
+              code: "FORBIDDEN",
+              message: `Veld '${field}' is beschermd (categorie ${cat}) en kan alleen via een wijzigverzoek worden aangepast.`,
+            });
+          }
+        }
+      }
+      // Audit each changed field (especially protected A/B fields).
+      const before = await db.select().from(properties).where(eq(properties.id, id)).limit(1);
       await db.update(properties).set(data).where(eq(properties.id, id));
+      for (const field of Object.keys(data)) {
+        await writeAudit(db, {
+          actorUserId: ctx.user.id,
+          action: "property.update",
+          entityType: "property",
+          entityId: id,
+          previousValue: { field, value: (before[0] as any)?.[field] ?? null },
+          newValue: { field, value: (data as any)[field], category: fieldCategory(field) },
+          ipAddress: clientIp(ctx.req),
+        });
+      }
       return { success: true };
     }),
 
@@ -321,45 +400,15 @@ const propertiesRouter = t.router({
         energyLabel: z.string().optional(),
       })
     )
-    .mutation(async ({ input, ctx }) => {
-      const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Find or create customer record for this user
-      let cust = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.userId, ctx.user.id))
-        .limit(1);
-      if (!cust[0]) {
-        const res = await db.insert(customers).values({
-          userId: ctx.user.id,
-          email: ctx.user.email || "",
-          firstName: ctx.user.name?.split(" ")[0] || ctx.user.name || "",
-          lastName: ctx.user.name?.split(" ").slice(1).join(" ") || null,
-          type: "particulier",
-          createdBy: ctx.user.id,
-        });
-        cust = await db
-          .select()
-          .from(customers)
-          .where(eq(customers.id, Number((res[0] as any).insertId)))
-          .limit(1);
-      }
-      if (!cust[0]) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      const result = await db.insert(properties).values({
-        customerId: cust[0].id,
-        street: input.street,
-        houseNumber: input.houseNumber,
-        postalCode: input.postalCode,
-        city: input.city,
-        propertyType: (input.propertyType as any) || "tussenwoning",
-        buildYear: input.buildYear,
-        surfaceM2: input.area,
-        residents: input.residents,
-        energyLabel: (input.energyLabel as any) || undefined,
-        subscriptionType: "free",
+    .mutation(async () => {
+      // DEPRECATED in 1.0: this path bypassed address duplicate-prevention.
+      // The client now uses passport.createOrClaim (unified create/claim flow).
+      // Kept only so any stale client build fails loudly instead of silently
+      // creating a duplicate passport.
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Deze functie is vervangen. Gebruik de nieuwe woning-/koppelflow (createOrClaim).",
       });
-      return { id: Number((result[0] as any).insertId) };
     }),
 });
 
@@ -371,13 +420,7 @@ const inspectionsRouter = t.router({
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Ownership check for non-admin
-      if (ctx.user.role !== "admin") {
-        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
-        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
-        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      await assertPropertyAccess(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, input.propertyId);
       return db
         .select()
         .from(inspections)
@@ -535,13 +578,7 @@ const maintenanceRouter = t.router({
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Ownership check for non-admin
-      if (ctx.user.role !== "admin") {
-        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
-        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
-        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      await assertPropertyAccess(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, input.propertyId);
       return db
         .select()
         .from(maintenanceIssues)
@@ -592,13 +629,7 @@ const maintenanceRouter = t.router({
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Ownership check for non-admin
-      if (ctx.user.role !== "admin") {
-        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
-        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
-        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      await assertPropertyAccess(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, input.propertyId);
       return db
         .select()
         .from(maintenancePlanning)
@@ -629,7 +660,7 @@ const maintenanceRouter = t.router({
 // ─── Users router (admin) ─────────────────────────────────────────────────────
 
 const usersRouter = t.router({
-  list: adminProcedure.query(async () => {
+  list: staffProcedure.query(async () => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
     return db.select({
@@ -644,13 +675,13 @@ const usersRouter = t.router({
     }).from(users).orderBy(desc(users.createdAt));
   }),
 
-  create: adminProcedure
+  create: managerProcedure
     .input(
       z.object({
         name: z.string().min(1),
         email: z.string().email(),
         password: z.string().min(8),
-        role: z.enum(["user", "admin"]).default("user"),
+        role: z.enum(["user", "comfortabel_employee", "manager", "admin"]).default("user"),
       })
     )
     .mutation(async ({ input }) => {
@@ -676,16 +707,26 @@ const usersRouter = t.router({
       return { id: Number(result[0].insertId) };
     }),
 
-  setRole: adminProcedure
-    .input(z.object({ id: z.number(), role: z.enum(["user", "admin"]) }))
-    .mutation(async ({ input }) => {
+  setRole: managerProcedure
+    .input(z.object({ id: z.number(), role: z.enum(["user", "comfortabel_employee", "manager", "admin"]) }))
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const before = await db.select({ role: users.role }).from(users).where(eq(users.id, input.id)).limit(1);
       await db.update(users).set({ role: input.role }).where(eq(users.id, input.id));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "user.setRole",
+        entityType: "user",
+        entityId: input.id,
+        previousValue: { role: before[0]?.role },
+        newValue: { role: input.role },
+        ipAddress: clientIp(ctx.req),
+      });
       return { success: true };
     }),
 
-  setActive: adminProcedure
+  setActive: managerProcedure
     .input(z.object({ id: z.number(), isActive: z.boolean() }))
     .mutation(async ({ input }) => {
       const db = await getDb();
@@ -715,13 +756,7 @@ const documentsRouter = t.router({
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Ownership check for non-admin
-      if (ctx.user.role !== "admin") {
-        const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
-        if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
-        if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
-      }
+      await assertPropertyAccess(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, input.propertyId);
       return db
         .select()
         .from(documents)
@@ -885,6 +920,418 @@ const invitationsRouter = t.router({
     }),
 });
 
+// ─── Passport router (1.0 address-bound model) ────────────────────────────────
+
+const passportRouter = t.router({
+  /**
+   * Unified create-or-claim flow used by BOTH client self-registration and
+   * admin creation. Computes normalizedAddressKey, checks for an existing
+   * active passport at that address, and either:
+   *   - creates a new passport with the actor as active owner, OR
+   *   - registers a pending_applicant claim (NO access) awaiting admin confirm.
+   */
+  createOrClaim: protectedProcedure
+    .input(
+      z.object({
+        street: z.string().min(1),
+        houseNumber: z.string().min(1),
+        addition: z.string().optional(),
+        houseLetter: z.string().optional(),
+        postalCode: z.string().min(1),
+        city: z.string().min(1),
+        propertyType: z
+          .enum(["tussenwoning", "hoekwoning", "vrijstaand", "appartement", "bedrijfspand", "overig"])
+          .optional(),
+        buildYear: z.number().optional(),
+        surfaceM2: z.number().optional(),
+        residents: z.number().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const ip = clientIp(ctx.req);
+      const role = ctx.user.role as AccountRole;
+      const key = normalizeAddressKey(input);
+
+      // Look for an existing ACTIVE passport at this normalized address.
+      const existing = await db
+        .select()
+        .from(properties)
+        .where(and(eq(properties.normalizedAddressKey, key), eq(properties.isActive, true)))
+        .limit(1);
+
+      if (existing[0]) {
+        const prop = existing[0];
+        // Already a member?
+        const existingMember = await getMembership(db, ctx.user.id, prop.id);
+        if (existingMember.memberStatus === "active") {
+          return { outcome: "already_member" as const, propertyId: prop.id };
+        }
+        if (existingMember.memberStatus === "pending") {
+          return { outcome: "claim_pending" as const, propertyId: prop.id };
+        }
+        // Register a pending claim — NO access until an admin confirms.
+        await db.insert(propertyMembers).values({
+          propertyId: prop.id,
+          userId: ctx.user.id,
+          role: "pending_applicant",
+          status: "pending",
+        });
+        await writeAudit(db, {
+          actorUserId: ctx.user.id,
+          action: "member.claim",
+          entityType: "property",
+          entityId: prop.id,
+          newValue: { userId: ctx.user.id, role: "pending_applicant", status: "pending" },
+          ipAddress: ip,
+        });
+        return { outcome: "claim_pending" as const, propertyId: prop.id };
+      }
+
+      // No existing passport → create new, actor becomes active owner.
+      const createdByRole = (role === "comfortabel_employee" || role === "manager" || role === "admin")
+        ? role
+        : "user";
+      const res = await db.insert(properties).values({
+        street: input.street,
+        houseNumber: input.houseNumber,
+        addition: input.addition,
+        houseLetter: input.houseLetter,
+        postalCode: input.postalCode,
+        city: input.city,
+        normalizedAddressKey: key,
+        propertyType: input.propertyType ?? "tussenwoning",
+        buildYear: input.buildYear,
+        surfaceM2: input.surfaceM2,
+        residents: input.residents,
+        subscriptionType: "free",
+        addressSource: role === "user" ? "customer" : "admin",
+        createdByRole: createdByRole as any,
+        createdByUserId: ctx.user.id,
+        status: "concept",
+        isActive: true,
+      });
+      const propertyId = Number((res[0] as any).insertId);
+      await db.insert(propertyMembers).values({
+        propertyId,
+        userId: ctx.user.id,
+        role: "owner",
+        status: "active",
+        confirmedBy: ctx.user.id,
+        confirmedAt: new Date(),
+      });
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "property.create",
+        entityType: "property",
+        entityId: propertyId,
+        newValue: { normalizedAddressKey: key, role: "owner" },
+        ipAddress: ip,
+      });
+      return { outcome: "created" as const, propertyId };
+    }),
+
+  /** Passports the current user can actually see (active membership or legacy link). */
+  myPassports: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    // Active memberships.
+    const members = await db
+      .select()
+      .from(propertyMembers)
+      .where(and(eq(propertyMembers.userId, ctx.user.id), eq(propertyMembers.status, "active")));
+    const ids = new Set<number>(members.map((m) => m.propertyId));
+    // Legacy bridge: properties linked via customers.userId.
+    const linkedCustomers = await db
+      .select({ id: customers.id })
+      .from(customers)
+      .where(eq(customers.userId, ctx.user.id));
+    for (const c of linkedCustomers) {
+      const props = await db
+        .select({ id: properties.id })
+        .from(properties)
+        .where(eq(properties.customerId, c.id));
+      props.forEach((p) => ids.add(p.id));
+    }
+    if (ids.size === 0) return [];
+    const all = await db.select().from(properties).orderBy(desc(properties.createdAt));
+    return all.filter((p) => ids.has(p.id) && p.isActive);
+  }),
+
+  /** Pending claims the current user has submitted (shown as "Aanvraag ontvangen"). */
+  myPendingClaims: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const rows = await db
+      .select({
+        memberId: propertyMembers.id,
+        propertyId: propertyMembers.propertyId,
+        status: propertyMembers.status,
+        role: propertyMembers.role,
+        createdAt: propertyMembers.createdAt,
+        street: properties.street,
+        houseNumber: properties.houseNumber,
+        postalCode: properties.postalCode,
+        city: properties.city,
+      })
+      .from(propertyMembers)
+      .innerJoin(properties, eq(properties.id, propertyMembers.propertyId))
+      .where(and(eq(propertyMembers.userId, ctx.user.id), eq(propertyMembers.status, "pending")));
+    return rows;
+  }),
+
+  // ── Admin/staff claim management ──────────────────────────────────────────
+
+  /** List all pending claims awaiting confirmation. */
+  listClaims: staffProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const rows = await db
+      .select({
+        memberId: propertyMembers.id,
+        propertyId: propertyMembers.propertyId,
+        userId: propertyMembers.userId,
+        role: propertyMembers.role,
+        status: propertyMembers.status,
+        createdAt: propertyMembers.createdAt,
+        userName: users.name,
+        userEmail: users.email,
+        street: properties.street,
+        houseNumber: properties.houseNumber,
+        postalCode: properties.postalCode,
+        city: properties.city,
+      })
+      .from(propertyMembers)
+      .innerJoin(users, eq(users.id, propertyMembers.userId))
+      .innerJoin(properties, eq(properties.id, propertyMembers.propertyId))
+      .where(eq(propertyMembers.status, "pending"))
+      .orderBy(desc(propertyMembers.createdAt));
+    return rows;
+  }),
+
+  /** Members of one property (admin role-management view). */
+  listMembers: staffProcedure
+    .input(z.object({ propertyId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      return db
+        .select({
+          memberId: propertyMembers.id,
+          userId: propertyMembers.userId,
+          role: propertyMembers.role,
+          status: propertyMembers.status,
+          confirmedAt: propertyMembers.confirmedAt,
+          userName: users.name,
+          userEmail: users.email,
+        })
+        .from(propertyMembers)
+        .innerJoin(users, eq(users.id, propertyMembers.userId))
+        .where(eq(propertyMembers.propertyId, input.propertyId));
+    }),
+
+  /** Confirm a pending claim: assign a real role and activate it. */
+  confirmClaim: staffProcedure
+    .input(
+      z.object({
+        memberId: z.number(),
+        role: z.enum(["owner", "tenant", "partner", "business_manager"]).default("owner"),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const before = await db
+        .select()
+        .from(propertyMembers)
+        .where(eq(propertyMembers.id, input.memberId))
+        .limit(1);
+      if (!before[0]) throw new TRPCError({ code: "NOT_FOUND" });
+      await db
+        .update(propertyMembers)
+        .set({ role: input.role, status: "active", confirmedBy: ctx.user.id, confirmedAt: new Date() })
+        .where(eq(propertyMembers.id, input.memberId));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "member.confirm",
+        entityType: "propertyMember",
+        entityId: input.memberId,
+        previousValue: { role: before[0].role, status: before[0].status },
+        newValue: { role: input.role, status: "active" },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { success: true };
+    }),
+
+  /** Reject or revoke a claim/membership. */
+  revokeMember: staffProcedure
+    .input(z.object({ memberId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const before = await db
+        .select()
+        .from(propertyMembers)
+        .where(eq(propertyMembers.id, input.memberId))
+        .limit(1);
+      if (!before[0]) throw new TRPCError({ code: "NOT_FOUND" });
+      await db
+        .update(propertyMembers)
+        .set({ status: "revoked" })
+        .where(eq(propertyMembers.id, input.memberId));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "member.revoke",
+        entityType: "propertyMember",
+        entityId: input.memberId,
+        previousValue: { status: before[0].status },
+        newValue: { status: "revoked" },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { success: true };
+    }),
+});
+
+// ─── Change requests router (A/B field workflow) ──────────────────────────────
+
+const changeRequestsRouter = t.router({
+  /** Submit a change request for a locked (A/B) field, or apply C directly. */
+  create: protectedProcedure
+    .input(
+      z.object({
+        propertyId: z.number(),
+        fieldName: z.string().min(1),
+        proposedValue: z.string(),
+        note: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Must at least be able to access the property.
+      const role = ctx.user.role as AccountRole;
+      const allowed = await canUserAccessProperty(db, { id: ctx.user.id, role }, input.propertyId);
+      if (!allowed) throw new TRPCError({ code: "FORBIDDEN" });
+      const category = fieldCategory(input.fieldName);
+      const membership = await getMembership(db, ctx.user.id, input.propertyId);
+      // Category C fields don't use change requests.
+      if (
+        !requiresChangeRequest({
+          category,
+          accountRole: role,
+          memberRole: membership.memberRole,
+          memberStatus: membership.memberStatus,
+        })
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Dit veld kan direct gewijzigd worden en vereist geen wijzigverzoek.",
+        });
+      }
+      const prop = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
+      const currentValue = prop[0] ? String((prop[0] as any)[input.fieldName] ?? "") : "";
+      const res = await db.insert(changeRequests).values({
+        propertyId: input.propertyId,
+        requestedBy: ctx.user.id,
+        fieldCategory: category === "C" ? "A" : (category as "A" | "B"),
+        fieldName: input.fieldName,
+        currentValue,
+        proposedValue: input.proposedValue,
+        note: input.note,
+        status: "open",
+      });
+      const id = Number((res[0] as any).insertId);
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "changeRequest.create",
+        entityType: "changeRequest",
+        entityId: id,
+        newValue: { fieldName: input.fieldName, proposedValue: input.proposedValue },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { id };
+    }),
+
+  /** List all open change requests (staff review queue). */
+  listOpen: staffProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    return db
+      .select({
+        id: changeRequests.id,
+        propertyId: changeRequests.propertyId,
+        requestedBy: changeRequests.requestedBy,
+        fieldCategory: changeRequests.fieldCategory,
+        fieldName: changeRequests.fieldName,
+        currentValue: changeRequests.currentValue,
+        proposedValue: changeRequests.proposedValue,
+        note: changeRequests.note,
+        status: changeRequests.status,
+        createdAt: changeRequests.createdAt,
+        requesterName: users.name,
+        requesterEmail: users.email,
+      })
+      .from(changeRequests)
+      .innerJoin(users, eq(users.id, changeRequests.requestedBy))
+      .where(eq(changeRequests.status, "open"))
+      .orderBy(desc(changeRequests.createdAt));
+  }),
+
+  /** Approve a change request: apply the proposed value to the property field. */
+  approve: staffProcedure
+    .input(z.object({ id: z.number(), reviewNote: z.string().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const cr = await db.select().from(changeRequests).where(eq(changeRequests.id, input.id)).limit(1);
+      if (!cr[0]) throw new TRPCError({ code: "NOT_FOUND" });
+      if (cr[0].status !== "open") throw new TRPCError({ code: "BAD_REQUEST", message: "Verzoek is al afgehandeld." });
+      // Apply to property (only known columns).
+      const field = cr[0].fieldName;
+      await db
+        .update(properties)
+        .set({ [field]: cr[0].proposedValue } as any)
+        .where(eq(properties.id, cr[0].propertyId));
+      await db
+        .update(changeRequests)
+        .set({ status: "approved", reviewedBy: ctx.user.id, reviewedAt: new Date(), reviewNote: input.reviewNote })
+        .where(eq(changeRequests.id, input.id));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "changeRequest.approve",
+        entityType: "property",
+        entityId: cr[0].propertyId,
+        previousValue: { [field]: cr[0].currentValue },
+        newValue: { [field]: cr[0].proposedValue },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { success: true };
+    }),
+
+  /** Reject a change request without applying it. */
+  reject: staffProcedure
+    .input(z.object({ id: z.number(), reviewNote: z.string().optional() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const cr = await db.select().from(changeRequests).where(eq(changeRequests.id, input.id)).limit(1);
+      if (!cr[0]) throw new TRPCError({ code: "NOT_FOUND" });
+      await db
+        .update(changeRequests)
+        .set({ status: "rejected", reviewedBy: ctx.user.id, reviewedAt: new Date(), reviewNote: input.reviewNote })
+        .where(eq(changeRequests.id, input.id));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "changeRequest.reject",
+        entityType: "changeRequest",
+        entityId: input.id,
+        ipAddress: clientIp(ctx.req),
+      });
+      return { success: true };
+    }),
+});
+
 // ─── App router ───────────────────────────────────────────────────────────────
 
 export const appRouter = t.router({
@@ -897,6 +1344,8 @@ export const appRouter = t.router({
   documents: documentsRouter,
   subscriptions: subscriptionsRouter,
   invitations: invitationsRouter,
+  passport: passportRouter,
+  changeRequests: changeRequestsRouter,
 });
 
 export type AppRouter = typeof appRouter;

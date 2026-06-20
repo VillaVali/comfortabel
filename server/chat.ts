@@ -13,6 +13,8 @@ import { eq, and, desc, asc } from "drizzle-orm";
 import { verifySessionToken, COOKIE_NAME } from "./context";
 import { users } from "../drizzle/schema";
 import { PLAN_FEATURES, type SubscriptionTier } from "../shared/const";
+import { canUserAccessProperty } from "./lib/membership";
+import type { AccountRole } from "./lib/passport";
 
 export const chatRouter = Router();
 
@@ -157,14 +159,8 @@ chatRouter.get("/:propertyId/history", async (req, res) => {
     const [userRow] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1);
     if (!userRow) { res.status(401).json({ error: "Gebruiker niet gevonden" }); return; }
 
-    if (userRow.role !== "admin") {
-      const [cust] = await db
-        .select()
-        .from(customers)
-        .where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, userRow.id)))
-        .limit(1);
-      if (!cust) { res.status(403).json({ error: "Geen toegang" }); return; }
-    }
+    const okHistory = await canUserAccessProperty(db, { id: userRow.id, role: userRow.role as AccountRole }, propertyId);
+    if (!okHistory) { res.status(403).json({ error: "Geen toegang" }); return; }
 
     // Load last 50 messages
     const history = await db
@@ -236,16 +232,10 @@ chatRouter.post("/:propertyId", async (req, res) => {
       return;
     }
 
-    if (user.role !== "admin") {
-      const [cust] = await db
-        .select()
-        .from(customers)
-        .where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, user.id)))
-        .limit(1);
-      if (!cust) {
-        res.status(403).json({ error: "Geen toegang" });
-        return;
-      }
+    const okChat = await canUserAccessProperty(db, { id: user.id, role: user.role as AccountRole }, propertyId);
+    if (!okChat) {
+      res.status(403).json({ error: "Geen toegang" });
+      return;
     }
 
     // Check AI feature access

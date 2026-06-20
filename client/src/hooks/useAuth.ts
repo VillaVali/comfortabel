@@ -1,10 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 
+export type AuthRole = "user" | "comfortabel_employee" | "manager" | "admin";
+
 export type AuthUser = {
   id: number;
   email: string;
   name: string;
-  role: "user" | "admin";
+  role: AuthRole;
   isActive: boolean;
 };
 
@@ -94,6 +96,13 @@ export function useAuth() {
     loading: state.loading,
     isAuthenticated: !!state.user,
     isAdmin: state.user?.role === "admin",
+    // Manager = admin | manager (may manage users + write A/B fields).
+    isManager: state.user?.role === "admin" || state.user?.role === "manager",
+    // Staff = admin | manager | comfortabel_employee (access the back office).
+    isStaff:
+      state.user?.role === "admin" ||
+      state.user?.role === "manager" ||
+      state.user?.role === "comfortabel_employee",
     login,
     register,
     logout,

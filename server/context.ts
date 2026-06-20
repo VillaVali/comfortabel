@@ -14,7 +14,7 @@ export type SessionUser = {
   id: number;
   name: string;
   email: string;
-  role: "user" | "admin";
+  role: "user" | "comfortabel_employee" | "manager" | "admin";
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

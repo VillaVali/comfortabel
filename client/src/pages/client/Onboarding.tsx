@@ -19,7 +19,7 @@ const PROPERTY_TYPES = [
 
 const ENERGY_LABELS = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G", "Onbekend"];
 
-type Step = "welkom" | "woning" | "details" | "klaar";
+type Step = "welkom" | "woning" | "details" | "klaar" | "claim";
 
 export default function ClientOnboarding() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -39,11 +39,18 @@ export default function ClientOnboarding() {
   const [createdPropertyId, setCreatedPropertyId] = useState<number | null>(null);
 
   const utils = trpc.useUtils();
-  const createProperty = trpc.properties.createOwn.useMutation({
-    onSuccess: (data: { id: number }) => {
-      setCreatedPropertyId(data.id);
+  const createProperty = trpc.passport.createOrClaim.useMutation({
+    onSuccess: (data: { outcome: string; propertyId: number }) => {
+      setCreatedPropertyId(data.propertyId);
       utils.properties.myProperties.invalidate();
-      setStep("klaar");
+      utils.passport.myPassports.invalidate();
+      utils.passport.myPendingClaims.invalidate();
+      if (data.outcome === "created" || data.outcome === "already_member") {
+        setStep("klaar");
+      } else {
+        // claim_pending
+        setStep("claim");
+      }
     },
     onError: (err: { message?: string }) => {
       setError(err.message || "Er ging iets mis. Probeer opnieuw.");
@@ -75,11 +82,10 @@ export default function ClientOnboarding() {
       houseNumber,
       postalCode,
       city,
-      propertyType,
+      propertyType: propertyType as any,
       buildYear: buildYear ? parseInt(buildYear) : undefined,
-      area: area ? parseFloat(area) : undefined,
+      surfaceM2: area ? parseFloat(area) : undefined,
       residents: residents ? parseInt(residents) : undefined,
-      energyLabel: energyLabel !== "Onbekend" ? energyLabel : undefined,
     });
   };
 
@@ -387,6 +393,34 @@ export default function ClientOnboarding() {
                   )}
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* ── Stap 4b: Claim ingediend (adres bestaat al) ── */}
+          {step === "claim" && (
+            <div className="p-8 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-full mb-5">
+                <CheckCircle2 className="w-10 h-10 text-amber-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Aanvraag ontvangen</h2>
+              <p className="text-gray-600 text-sm mb-2">
+                Voor <strong>{street} {houseNumber}, {city}</strong> bestaat al een Woningpaspoort™.
+              </p>
+              <p className="text-gray-500 text-xs mb-4 leading-relaxed">
+                Uw verzoek om aan deze woning gekoppeld te worden is ingediend. Een medewerker van
+                Comfortabel controleert uw aanvraag. <strong>U krijgt pas toegang tot de woninggegevens
+                nadat de aanvraag is bevestigd.</strong> Dit beschermt de privacy van de huidige eigenaar.
+              </p>
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 mb-6 text-left">
+                <strong>Status:</strong> In behandeling — wacht op bevestiging door Comfortabel.
+              </div>
+              <button
+                onClick={() => { window.location.href = "/mijn"; }}
+                className="w-full py-3 bg-[#1E3A5F] hover:bg-[#162d4a] text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition active:scale-[0.97]"
+              >
+                Naar mijn portaal
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           )}
 

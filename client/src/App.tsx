@@ -10,6 +10,7 @@ import AdminProperties from "./pages/admin/Properties";
 import AdminPropertyDetail from "./pages/admin/PropertyDetail";
 import AdminInspection from "./pages/admin/Inspection";
 import AdminUsers from "./pages/admin/Users";
+import AdminValidation from "./pages/admin/Validation";
 import ClientDashboard from "./pages/client/Dashboard";
 import ClientProperty from "./pages/client/Property";
 import NotFound from "./pages/NotFound";
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/admin/properties/:id" component={AdminPropertyDetail} />
         <Route path="/admin/inspections/:id" component={AdminInspection} />
         <Route path="/admin/users" component={AdminUsers} />
+        <Route path="/admin/validatie" component={AdminValidation} />
         {/* Client routes */}
         <Route path="/mijn" component={ClientDashboard} />
         <Route path="/mijn/onboarding" component={ClientOnboarding} />

@@ -11,6 +11,8 @@ import {
 } from "../drizzle/schema";
 import { eq, desc, asc } from "drizzle-orm";
 import { createContext } from "./context";
+import { canUserAccessProperty } from "./lib/membership";
+import type { AccountRole } from "./lib/passport";
 
 export const pdfRouter = Router();
 
@@ -174,11 +176,8 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
     const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
     if (!property) return res.status(404).json({ error: "Property not found" });
 
-    if (ctx.user.role !== "admin") {
-      const custRows = await db.select().from(customers).where(eq(customers.userId, ctx.user.id)).limit(1);
-      if (!custRows[0] || custRows[0].id !== property.customerId) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
@@ -458,11 +457,8 @@ pdfRouter.get("/verduurzaming/:propertyId", async (req, res) => {
     const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
     if (!property) return res.status(404).json({ error: "Property not found" });
 
-    if (ctx.user.role !== "admin") {
-      const custRows = await db.select().from(customers).where(eq(customers.userId, ctx.user.id)).limit(1);
-      if (!custRows[0] || custRows[0].id !== property.customerId) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
@@ -599,11 +595,8 @@ pdfRouter.get("/subsidies/:propertyId", async (req, res) => {
     const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
     if (!property) return res.status(404).json({ error: "Property not found" });
 
-    if (ctx.user.role !== "admin") {
-      const custRows = await db.select().from(customers).where(eq(customers.userId, ctx.user.id)).limit(1);
-      if (!custRows[0] || custRows[0].id !== property.customerId) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
@@ -739,11 +732,8 @@ pdfRouter.get("/onderhoudsrapport/:propertyId", async (req, res) => {
     const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
     if (!property) return res.status(404).json({ error: "Property not found" });
 
-    if (ctx.user.role !== "admin") {
-      const custRows = await db.select().from(customers).where(eq(customers.userId, ctx.user.id)).limit(1);
-      if (!custRows[0] || custRows[0].id !== property.customerId) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const issueRows = await db.select().from(maintenanceIssues)
@@ -888,11 +878,8 @@ pdfRouter.get("/inspectierapport/:propertyId", async (req, res) => {
     const [property] = await db.select().from(properties).where(eq(properties.id, propertyId)).limit(1);
     if (!property) return res.status(404).json({ error: "Property not found" });
 
-    if (ctx.user.role !== "admin") {
-      const custRows = await db.select().from(customers).where(eq(customers.userId, ctx.user.id)).limit(1);
-      if (!custRows[0] || custRows[0].id !== property.customerId) {
-        return res.status(403).json({ error: "Forbidden" });
-      }
+    if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
+      return res.status(403).json({ error: "Forbidden" });
     }
 
     const inspectionRows = await db.select().from(inspections)

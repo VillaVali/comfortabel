@@ -9,27 +9,31 @@ import {
   Building2,
   ChevronRight,
   Shield,
+  ShieldCheck,
   Menu,
   X,
 } from "lucide-react";
 
-const navItems = [
+const navItems: { href: string; label: string; icon: typeof LayoutDashboard; managerOnly?: boolean }[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/customers", label: "Klanten", icon: Users },
   { href: "/admin/properties", label: "Woningen", icon: Home },
-  { href: "/admin/users", label: "Gebruikers", icon: Shield },
+  { href: "/admin/validatie", label: "Beheer & validatie", icon: ShieldCheck },
+  { href: "/admin/users", label: "Gebruikers", icon: Shield, managerOnly: true },
 ];
 
 export default function AdminLayout({ children, title }: { children: React.ReactNode; title?: string }) {
-  const { user, loading, isAdmin, logout } = useAuth();
+  const { user, loading, isStaff, isManager, logout } = useAuth();
   const [location, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!loading && !isAdmin) {
+    if (!loading && !isStaff) {
       navigate("/login");
     }
-  }, [loading, isAdmin]);
+  }, [loading, isStaff]);
+
+  const visibleNavItems = navItems.filter((item) => !item.managerOnly || isManager);
 
   // Close sidebar on navigation
   useEffect(() => {
@@ -47,7 +51,7 @@ export default function AdminLayout({ children, title }: { children: React.React
     );
   }
 
-  if (!isAdmin) return null;
+  if (!isStaff) return null;
 
   const SidebarContent = () => (
     <>
@@ -63,7 +67,7 @@ export default function AdminLayout({ children, title }: { children: React.React
       </div>
 
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = location === item.href || (item.href !== "/admin" && location.startsWith(item.href));
           return (

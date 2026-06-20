@@ -1,16 +1,40 @@
 import ClientLayout from "../../components/ClientLayout";
 import { trpc } from "../../lib/trpc";
 import WoningScore from "../../components/WoningScore";
-import { Home, ArrowRight, ClipboardCheck, AlertTriangle, Plus, FileText, Zap } from "lucide-react";
+import { Home, ArrowRight, ClipboardCheck, AlertTriangle, Plus, FileText, Zap, Clock } from "lucide-react";
 import {
   SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS, type SubscriptionTier,
 } from "@shared/const";
 
 export default function ClientDashboard() {
   const { data: properties = [], isLoading } = trpc.properties.myProperties.useQuery();
+  const { data: pendingClaims = [] } = trpc.passport.myPendingClaims.useQuery();
 
   return (
     <ClientLayout title="Mijn woningen">
+      {pendingClaims.length > 0 && (
+        <div className="mb-5 space-y-3">
+          {pendingClaims.map((c) => (
+            <div
+              key={c.memberId}
+              className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-2xl"
+            >
+              <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Clock className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-900">
+                  Aanvraag in behandeling: {c.street} {c.houseNumber}, {c.city}
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Uw koppelingsverzoek wordt door Comfortabel gecontroleerd. U krijgt toegang tot de
+                  woninggegevens zodra de aanvraag is bevestigd.
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {[1, 2].map((i) => (
