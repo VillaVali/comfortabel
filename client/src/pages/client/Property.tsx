@@ -26,7 +26,22 @@ import {
   PLAN_FEATURES, SUBSCRIPTION_LABELS, SUBSCRIPTION_COLORS,
   SUBSCRIPTION_PRICES, type SubscriptionTier,
 } from "@shared/const";
-import { Lock, ArrowUpRight } from "lucide-react";
+import { Lock, ArrowUpRight, PencilLine } from "lucide-react";
+import ChangeRequestDialog from "../../components/ChangeRequestDialog";
+
+// Field category mirrors the server-side FIELD_CATEGORY (single source of truth
+// in server/lib/passport.ts). A = system/official, B = validated → both LOCKED
+// for the client (require a change request). Keep this in sync with the server.
+const CLIENT_FIELD_CATEGORY: Record<string, "A" | "B"> = {
+  // Category A — system / official identity (mirror of server FIELD_CATEGORY)
+  street: "A", houseNumber: "A", postalCode: "A", city: "A", addition: "A", houseLetter: "A",
+  bagId: "A", bagObjectId: "A", bagNumberDesignationId: "A", normalizedAddressKey: "A",
+  surfaceM2: "A", buildYear: "A", propertyType: "A",
+  wozValue: "A", wozYear: "A", kadastraleAanduiding: "A", buurtCode: "A", wijk: "A",
+  ownershipType: "A", isMonument: "A", monumentType: "A", hasErfpacht: "A", erfpachtCanon: "A",
+  // Category B — Comfortabel-validated
+  energyLabel: "B", addressValidationStatus: "B", status: "B",
+};
 
 function LockedFeature({ tier, feature }: { tier: SubscriptionTier; feature: string }) {
   const upgradeTier = tier === "free" ? "digital" : tier === "digital" ? "basis" : tier === "basis" ? "plus" : "premium";
@@ -58,8 +73,10 @@ export default function ClientProperty() {
   const propertyId = Number(params.id);
   const [activeTab, setActiveTab] = useState<"paspoort" | "onderhoud" | "planning" | "documenten" | "downloads">("paspoort");
   const [generatingReport, setGeneratingReport] = useState<string | null>(null);
+  const [crField, setCrField] = useState<{ field: string; label: string; current: string; category: "A" | "B" } | null>(null);
 
   const { data: property } = trpc.properties.get.useQuery({ id: propertyId });
+  const { data: myRequests = [] } = trpc.changeRequests.listMine.useQuery({ propertyId });
   const { data: inspections = [] } = trpc.inspections.listByProperty.useQuery({ propertyId });
   const { data: issues = [] } = trpc.maintenance.listIssues.useQuery({ propertyId });
   const { data: planning = [] } = trpc.maintenance.listPlanning.useQuery({ propertyId });
@@ -84,6 +101,8 @@ export default function ClientProperty() {
   // Feature flags based on subscription tier
   const tier = (property?.subscriptionType ?? "free") as SubscriptionTier;
   const features = PLAN_FEATURES[tier];
+
+  const openRequests = myRequests.filter((r) => r.status === "open");
 
   if (!property) {
     return (
@@ -227,37 +246,74 @@ export default function ClientProperty() {
       {activeTab === "paspoort" && (
         <div className="space-y-4">
 
+          {openRequests.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <Clock className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-800">
+                <p className="font-semibold mb-0.5">
+                  {openRequests.length} correctieverzoek{openRequests.length > 1 ? "en" : ""} in behandeling
+                </p>
+                <p className="text-amber-700 text-xs">
+                  Comfortabel controleert uw voorstel{openRequests.length > 1 ? "len" : ""} (o.a.{" "}
+                  {openRequests.map((r) => r.fieldName).join(", ")}) en past de gegevens aan zodra gevalideerd.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── Blok 1: Basisidentiteit (altijd zichtbaar) ── */}
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
               <Home className="w-4 h-4 text-slate-400" />
               <h3 className="font-semibold text-slate-800 text-sm">Basisidentiteit</h3>
+              <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-slate-400">
+                <Lock className="w-3 h-3" /> = gevalideerd, alleen via correctieverzoek
+              </span>
             </div>
             <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-              {[
-                ["Adres", `${property.street} ${property.houseNumber}`],
-                ["Postcode & Stad", `${property.postalCode} ${property.city}`],
-                ["Woningtype", property.propertyType],
-                ["Bouwjaar", property.buildYear],
-                ["Oppervlakte", property.surfaceM2 ? `${property.surfaceM2} m²` : null],
-                ["Bewoners", property.residents],
-                ["Energielabel", property.energyLabel],
+              {([
+                ["Straat", property.street, "street"],
+                ["Huisnummer", property.houseNumber, "houseNumber"],
+                ["Postcode", property.postalCode, "postalCode"],
+                ["Plaats", property.city, "city"],
+                ["Woningtype", property.propertyType, "propertyType"],
+                ["Bouwjaar", property.buildYear, "buildYear"],
+                ["Oppervlakte", property.surfaceM2 ? `${property.surfaceM2} m²` : null, "surfaceM2"],
+                ["Bewoners", property.residents, "residents"],
+                ["Energielabel", property.energyLabel, "energyLabel"],
                 ["Eigendomsvorm", property.ownershipType ? ({
                   volle_eigendom: "Volle eigendom",
                   erfpacht: "Erfpacht",
                   appartementsrecht: "Appartementsrecht",
                   opstalrecht: "Opstalrecht",
                   onbekend: "Onbekend",
-                } as Record<string,string>)[property.ownershipType] : null],
-                ["Kadastrale aanduiding", property.kadastraleAanduiding],
-                ["Wijk", property.wijk],
-                ["BAG-gebruiksfunctie", property.bestemmingCategory],
-              ].filter(([, v]) => v != null && v !== "").map(([label, value]) => (
-                <div key={label as string}>
-                  <p className="text-xs text-slate-400 mb-0.5">{label}</p>
-                  <p className="font-medium text-slate-800 capitalize">{String(value)}</p>
-                </div>
-              ))}
+                } as Record<string,string>)[property.ownershipType] : null, "ownershipType"],
+                ["Kadastrale aanduiding", property.kadastraleAanduiding, "kadastraleAanduiding"],
+                ["Wijk", property.wijk, "wijk"],
+                ["BAG-gebruiksfunctie", property.bestemmingCategory, "bestemmingCategory"],
+              ] as [string, unknown, string][]).filter(([, v]) => v != null && v !== "").map(([label, value, field]) => {
+                const cat = CLIENT_FIELD_CATEGORY[field];
+                return (
+                  <div key={label} className="group">
+                    <p className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
+                      {label}
+                      {cat && <Lock className="w-3 h-3 text-slate-300" />}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-slate-800 capitalize">{String(value)}</p>
+                      {cat && (
+                        <button
+                          onClick={() => setCrField({ field, label, current: String(value), category: cat })}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-[11px] text-[#1E3A5F] hover:underline"
+                          title="Correctie aanvragen"
+                        >
+                          <PencilLine className="w-3 h-3" /> Correctie
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
               {property.isMonument && (
                 <div className="col-span-2">
                   <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
@@ -277,19 +333,36 @@ export default function ClientProperty() {
                   <h3 className="font-semibold text-slate-800 text-sm">Waarde & Financieel</h3>
                 </div>
                 <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  {[
-                    ["WOZ-waarde", property.wozValue ? `€${property.wozValue.toLocaleString("nl-NL")}${property.wozYear ? ` (${property.wozYear})` : ""}` : null],
-                    ["Koopsom", property.purchasePrice ? `€${property.purchasePrice.toLocaleString("nl-NL")}${property.purchaseYear ? ` (${property.purchaseYear})` : ""}` : null],
-                    ["VvE-bijdrage", property.vveContribution ? `€${property.vveContribution}/mnd` : null],
-                    ["Hypotheekverstrekker", property.mortgageProvider],
-                    ["Erfpachtcanon", property.erfpachtCanon ? `€${property.erfpachtCanon}/jr` : null],
-                    ["Opstalverzekering", property.insuranceExpiry ? `Vervalt ${new Date(property.insuranceExpiry).toLocaleDateString("nl-NL")}` : null],
-                  ].filter(([, v]) => v != null && v !== "").map(([label, value]) => (
-                    <div key={label as string}>
-                      <p className="text-xs text-slate-400 mb-0.5">{label}</p>
-                      <p className="font-medium text-slate-800">{String(value)}</p>
-                    </div>
-                  ))}
+                  {([
+                    ["WOZ-waarde", property.wozValue ? `€${property.wozValue.toLocaleString("nl-NL")}${property.wozYear ? ` (${property.wozYear})` : ""}` : null, "wozValue"],
+                    ["Koopsom", property.purchasePrice ? `€${property.purchasePrice.toLocaleString("nl-NL")}${property.purchaseYear ? ` (${property.purchaseYear})` : ""}` : null, "purchasePrice"],
+                    ["VvE-bijdrage", property.vveContribution ? `€${property.vveContribution}/mnd` : null, "vveContribution"],
+                    ["Hypotheekverstrekker", property.mortgageProvider, "mortgageProvider"],
+                    ["Erfpachtcanon", property.erfpachtCanon ? `€${property.erfpachtCanon}/jr` : null, "erfpachtCanon"],
+                    ["Opstalverzekering", property.insuranceExpiry ? `Vervalt ${new Date(property.insuranceExpiry).toLocaleDateString("nl-NL")}` : null, "insuranceExpiry"],
+                  ] as [string, unknown, string][]).filter(([, v]) => v != null && v !== "").map(([label, value, field]) => {
+                    const cat = CLIENT_FIELD_CATEGORY[field];
+                    return (
+                      <div key={label} className="group">
+                        <p className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
+                          {label}
+                          {cat && <Lock className="w-3 h-3 text-slate-300" />}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-slate-800">{String(value)}</p>
+                          {cat && (
+                            <button
+                              onClick={() => setCrField({ field, label, current: String(value), category: cat })}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-[11px] text-[#1E3A5F] hover:underline"
+                              title="Correctie aanvragen"
+                            >
+                              <PencilLine className="w-3 h-3" /> Correctie
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ) : null
@@ -316,18 +389,35 @@ export default function ClientProperty() {
                 <h3 className="font-semibold text-slate-800 text-sm">Juridisch & Omgeving</h3>
               </div>
               <div className="p-5 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                {[
+                {([
                   ["Monumentstatus", property.monumentType && property.monumentType !== "geen" ? ({
                     rijksmonument: "Rijksmonument",
                     gemeentelijk: "Gemeentelijk monument",
-                  } as Record<string,string>)[property.monumentType] : null],
-                  ["CBS buurtcode", property.buurtCode],
-                ].filter(([, v]) => v != null && v !== "").map(([label, value]) => (
-                  <div key={label as string}>
-                    <p className="text-xs text-slate-400 mb-0.5">{label}</p>
-                    <p className="font-medium text-slate-800">{String(value)}</p>
-                  </div>
-                ))}
+                  } as Record<string,string>)[property.monumentType] : null, "monumentType"],
+                  ["CBS buurtcode", property.buurtCode, "buurtCode"],
+                ] as [string, unknown, string][]).filter(([, v]) => v != null && v !== "").map(([label, value, field]) => {
+                  const cat = CLIENT_FIELD_CATEGORY[field];
+                  return (
+                    <div key={label} className="group">
+                      <p className="text-xs text-slate-400 mb-0.5 flex items-center gap-1">
+                        {label}
+                        {cat && <Lock className="w-3 h-3 text-slate-300" />}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-800">{String(value)}</p>
+                        {cat && (
+                          <button
+                            onClick={() => setCrField({ field, label, current: String(value), category: cat })}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-[11px] text-[#1E3A5F] hover:underline"
+                            title="Correctie aanvragen"
+                          >
+                            <PencilLine className="w-3 h-3" /> Correctie
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
                 {property.bestemmingUrl && (
                   <div className="col-span-2">
                     <p className="text-xs text-slate-400 mb-0.5">Omgevingsloket</p>
@@ -913,6 +1003,17 @@ export default function ClientProperty() {
           </div>
 
         </div>
+      )}
+
+      {crField && (
+        <ChangeRequestDialog
+          propertyId={propertyId}
+          fieldName={crField.field}
+          fieldLabel={crField.label}
+          currentValue={crField.current}
+          category={crField.category}
+          onClose={() => setCrField(null)}
+        />
       )}
     </ClientLayout>
   );

@@ -252,10 +252,20 @@ export function pickCanonical(candidates: CanonicalCandidate[]): number | null {
 // exact same classification — preventing drift between enforcement and tests.
 
 export const FIELD_CATEGORY: Record<string, FieldCategory> = {
-  // Category A — system / official identity data (address, BAG, WOZ, kadaster)
+  // Category A — official / system identity data. These come from authoritative
+  // sources (BAG, WOZ, Kadaster, a Comfortabel 0-meting) and may NEVER be edited
+  // directly by a customer or a comfortabel_employee: user input must always be
+  // verified against the source. Corrections flow through a change request.
+  //  · Address & BAG identity
   street: "A", houseNumber: "A", postalCode: "A", city: "A", addition: "A", houseLetter: "A",
   bagId: "A", bagObjectId: "A", bagNumberDesignationId: "A", normalizedAddressKey: "A",
-  wozValue: "A", wozYear: "A", kadastraleAanduiding: "A", buurtCode: "A",
+  //  · Physical facts (BAG / 0-meting): surface, build year, type
+  surfaceM2: "A", buildYear: "A", propertyType: "A",
+  //  · Value & financial official data (WOZ, kadaster)
+  wozValue: "A", wozYear: "A", kadastraleAanduiding: "A", buurtCode: "A", wijk: "A",
+  //  · Legal / ownership official data
+  ownershipType: "A", isMonument: "A", monumentType: "A", hasErfpacht: "A", erfpachtCanon: "A",
+
   // Category B — Comfortabel-validated data (scores, validated label, validation status)
   energyLabel: "B", addressValidationStatus: "B", status: "B",
   // Everything else defaults to Category C (free user data).

@@ -728,10 +728,59 @@ const usersRouter = t.router({
 
   setActive: managerProcedure
     .input(z.object({ id: z.number(), isActive: z.boolean() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.update(users).set({ isActive: input.isActive }).where(eq(users.id, input.id));
+      // Deactivating an account also revokes its active property memberships
+      // (access is removed) but the WoningPaspoort records themselves are kept.
+      if (!input.isActive) {
+        await db
+          .update(propertyMembers)
+          .set({ status: "revoked" })
+          .where(and(eq(propertyMembers.userId, input.id), eq(propertyMembers.status, "active")));
+      }
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: input.isActive ? "user.activate" : "user.deactivate",
+        entityType: "user",
+        entityId: input.id,
+        newValue: { isActive: input.isActive },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { success: true };
+    }),
+
+  /**
+   * Delete a user (GDPR-style). Safe by design: this ANONYMIZES the account and
+   * revokes its memberships, but KEEPS the WoningPaspoort + property history
+   * intact (those belong to the address, not the person). Personal data is
+   * scrubbed so the account can no longer sign in or be identified.
+   */
+  delete: managerProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      if (input.id === ctx.user.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "U kunt uw eigen account niet verwijderen." });
+      }
+      // Revoke all memberships (passport history is preserved).
+      await db.update(propertyMembers).set({ status: "revoked" }).where(eq(propertyMembers.userId, input.id));
+      // Anonymize personal data and disable sign-in.
+      const anonEmail = `deleted-${input.id}-${Date.now()}@deleted.invalid`;
+      await db
+        .update(users)
+        .set({ name: "Verwijderde gebruiker", email: anonEmail, passwordHash: null, isActive: false })
+        .where(eq(users.id, input.id));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "user.delete",
+        entityType: "user",
+        entityId: input.id,
+        newValue: { anonymized: true, passportHistoryPreserved: true },
+        ipAddress: clientIp(ctx.req),
+      });
       return { success: true };
     }),
 
@@ -1251,6 +1300,21 @@ const changeRequestsRouter = t.router({
         ipAddress: clientIp(ctx.req),
       });
       return { id };
+    }),
+
+  /** List the current user's own change requests (any status), newest first. */
+  listMine: protectedProcedure
+    .input(z.object({ propertyId: z.number().optional() }).optional())
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const conds = [eq(changeRequests.requestedBy, ctx.user.id)];
+      if (input?.propertyId) conds.push(eq(changeRequests.propertyId, input.propertyId));
+      return db
+        .select()
+        .from(changeRequests)
+        .where(and(...conds))
+        .orderBy(desc(changeRequests.createdAt));
     }),
 
   /** List all open change requests (staff review queue). */

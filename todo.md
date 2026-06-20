@@ -266,34 +266,34 @@
 - [x] Klant onboarding: createOrClaim flow met claim-scherm bij bestaand adres
 - [x] Klant dashboard: statusbanner voor lopende koppelingsverzoeken
 - [x] Admin /admin/validatie: claims bevestigen/afwijzen, wijzigverzoeken, rolbeheer
-- [ ] Veld-vergrendeling visueel (slotjes op gevalideerde/systeemvelden) — volgende iteratie
-- [ ] Wijzigverzoek-knop bij vergrendelde velden in paspoort-tab — volgende iteratie
+- [x] Veld-vergrendeling visueel (slotjes op gevalideerde/systeemvelden)
+- [x] Wijzigverzoek-knop bij vergrendelde velden in paspoort-tab
 
 ### Testplan (verplicht, alle 12 scenario's)
-- [ ] klant maakt nieuw account aan
-- [ ] klant maakt nieuw adres aan
-- [ ] klant vult bestaand adres in (koppeling)
-- [ ] beheer maakt hetzelfde adres aan (duplicate prevention)
-- [ ] koppeling gebruiker aan bestaand WoningPaspoort
-- [ ] beheer wijzigt data
-- [ ] klant probeert vergrendelde data te wijzigen (geweigerd)
-- [ ] klant uploadt documenten
-- [ ] beheer valideert gegevens
-- [ ] gebruiker deactiveren
-- [ ] gebruiker verwijderen
-- [ ] WoningPaspoort samenvoegen
-- [ ] TypeScript: geen fouten
+- [x] klant maakt nieuw account aan (scenarios.test.ts #1)
+- [x] klant maakt nieuw adres aan (scenarios.test.ts #2)
+- [x] klant vult bestaand adres in (koppeling) (scenarios.test.ts #3)
+- [x] beheer maakt hetzelfde adres aan (duplicate prevention) (scenarios.test.ts #4)
+- [x] koppeling gebruiker aan bestaand WoningPaspoort (scenarios.test.ts #5)
+- [x] beheer wijzigt data (scenarios.test.ts #6)
+- [x] klant probeert vergrendelde data te wijzigen (geweigerd) (scenarios.test.ts #7)
+- [x] klant uploadt documenten (toegang) (scenarios.test.ts #8)
+- [x] beheer valideert gegevens (scenarios.test.ts #9)
+- [x] gebruiker deactiveren (scenarios.test.ts #10)
+- [x] gebruiker verwijderen (scenarios.test.ts #11)
+- [x] WoningPaspoort samenvoegen (scenarios.test.ts #12)
+- [x] TypeScript: geen fouten
 
 ## Fase 14b: Aanscherpingen vóór implementatie (akkoord klant)
 
 ### Datamodel hardening
-- [ ] properties: BAG-velden — bagId, bagObjectId (verblijfsobject), bagNumberDesignationId (nummeraanduiding), addition, houseLetter
-- [ ] properties: normalizedAddressKey (uniek), addressValidationStatus, addressSource
-- [ ] properties: status (concept/ingevuld/gevalideerd/aandacht), createdByRole
-- [ ] propertyMembers rollen: pending_applicant, owner, tenant, partner, business_manager, comfortabel_employee, manager, admin
-- [ ] users.role enum: user, comfortabel_employee, manager, admin
-- [ ] auditLog tabel: actorUserId, action, entityType, entityId, previousValue, newValue, ipAddress, createdAt
-- [ ] Toekomststubs: userProfile, consents, notifications, dossierNotes (subscriptions bestaat al)
+- [x] properties: BAG-velden — bagId, bagObjectId, bagNumberDesignationId, addition, houseLetter
+- [x] properties: normalizedAddressKey (uniek), addressValidationStatus, addressSource
+- [x] properties: status (concept/ingevuld/gevalideerd/aandacht), createdByRole
+- [x] propertyMembers rollen: pending_applicant, owner, tenant, partner, business_manager, comfortabel_employee, manager, admin
+- [x] users.role enum: user, comfortabel_employee, manager, admin
+- [x] auditLog tabel: actorUserId, action, entityType, entityId, previousValue, newValue, ipAddress, createdAt
+- [ ] Toekomststubs: userProfile, consents, notifications, dossierNotes (niet in deze iteratie — subscriptions bestaat al)
 
 ### Pending-claim regel (HARD)
 - [x] Bestaand adres -> rol pending_applicant, GEEN toegang tot gevoelige woningdata/documenten/inspecties
@@ -341,5 +341,12 @@
 
 ### Bekende aandachtspunten (apart van deze opdracht)
 - [ ] pdf.ts gebruikt puppeteer-core (browser-binary) — werkt niet in Autoscale Node-only deploy; alternatief nodig vóór publicatie
-- [ ] Veld-vergrendeling visueel (slotjes) in paspoort-tab — volgende iteratie
-- [ ] Wijzigverzoek-knop bij vergrendelde velden in klant-UI — volgende iteratie
+- [x] Veld-vergrendeling visueel (slotjes) in paspoort-tab
+- [x] Wijzigverzoek-knop bij vergrendelde velden in klant-UI (ChangeRequestDialog + statusbanner + listMine)
+
+### Integratietests (caller-niveau, echte procedures)
+- [x] In-memory FakeDb + gemockte drizzle-operatoren (server/test/fakeDb.ts)
+- [x] integration.test.ts: createOrClaim create/claim/no-access, admin duplicate CONFLICT, confirmClaim grants access, manager A/B write, employee A/B FORBIDDEN, changeRequest approve/reject, setActive revoke, delete anonymize
+- [x] Bug gevonden+gefixt: surfaceM2/buildYear/propertyType + WOZ/kadaster/eigendom waren NIET beschermd -> nu categorie A (BAG-regel)
+- [x] Client CLIENT_FIELD_CATEGORY gelijkgetrokken met server FIELD_CATEGORY
+- [x] 100/100 tests groen, TypeScript foutloos
