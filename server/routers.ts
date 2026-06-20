@@ -192,7 +192,7 @@ const propertiesRouter = t.router({
         const cust = await db
           .select()
           .from(customers)
-          .where(and(eq(customers.id, result[0].customerId), eq(customers.userId, ctx.user.id)))
+          .where(and(eq(customers.id, result[0].customerId ?? -1), eq(customers.userId, ctx.user.id)))
           .limit(1);
         if (!cust[0]) throw new TRPCError({ code: "FORBIDDEN" });
       }
@@ -375,7 +375,7 @@ const inspectionsRouter = t.router({
       if (ctx.user.role !== "admin") {
         const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
         if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
         if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
       }
       return db
@@ -539,7 +539,7 @@ const maintenanceRouter = t.router({
       if (ctx.user.role !== "admin") {
         const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
         if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
         if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
       }
       return db
@@ -596,7 +596,7 @@ const maintenanceRouter = t.router({
       if (ctx.user.role !== "admin") {
         const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
         if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
         if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
       }
       return db
@@ -719,7 +719,7 @@ const documentsRouter = t.router({
       if (ctx.user.role !== "admin") {
         const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
         if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
-        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId), eq(customers.userId, ctx.user.id))).limit(1);
+        const [cust] = await db.select().from(customers).where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, ctx.user.id))).limit(1);
         if (!cust) throw new TRPCError({ code: "FORBIDDEN" });
       }
       return db

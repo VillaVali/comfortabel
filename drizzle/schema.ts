@@ -19,7 +19,8 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }).notNull().unique(),
   loginMethod: varchar("loginMethod", { length: 64 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  // Account-level role. Property-level roles live in propertyMembers.
+  role: mysqlEnum("role", ["user", "comfortabel_employee", "manager", "admin"]).default("user").notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -54,11 +55,38 @@ export type InsertCustomer = typeof customers.$inferInsert;
 
 export const properties = mysqlTable("properties", {
   id: int("id").autoincrement().primaryKey(),
-  customerId: int("customerId").notNull().references(() => customers.id),
+  // customerId becomes nullable in 1.0: a passport is address-bound, not customer-bound.
+  // Kept for backward compatibility and admin customer-administration linkage.
+  customerId: int("customerId").references(() => customers.id),
   street: varchar("street", { length: 200 }).notNull(),
   houseNumber: varchar("houseNumber", { length: 20 }).notNull(),
+  addition: varchar("addition", { length: 20 }),        // toevoeging, e.g. "A", "bis"
+  houseLetter: varchar("houseLetter", { length: 5 }),   // huisletter
   postalCode: varchar("postalCode", { length: 10 }).notNull(),
   city: varchar("city", { length: 100 }).notNull(),
+
+  // ── Adres-identiteit & duplicaatpreventie (1.0) ────────────────────────────
+  // Deterministic normalized key: POSTCODE-HUISNR[-TOEVOEGING] uppercase, no spaces.
+  // Unique constraint enforces: one physical address = at most one WoningPaspoort.
+  normalizedAddressKey: varchar("normalizedAddressKey", { length: 64 }).unique(),
+  bagId: varchar("bagId", { length: 32 }),                          // BAG pand-id
+  bagObjectId: varchar("bagObjectId", { length: 32 }),              // BAG verblijfsobject-id
+  bagNumberDesignationId: varchar("bagNumberDesignationId", { length: 32 }), // BAG nummeraanduiding-id
+  addressValidationStatus: mysqlEnum("addressValidationStatus", [
+    "unvalidated", "validated", "manual", "conflict"
+  ]).default("unvalidated").notNull(),
+  addressSource: mysqlEnum("addressSource", [
+    "customer", "admin", "bag", "import", "migration"
+  ]).default("customer").notNull(),
+  // Passport lifecycle status (shown to admin): concept / ingevuld / gevalideerd / aandacht.
+  status: mysqlEnum("status", [
+    "concept", "ingevuld", "gevalideerd", "aandacht"
+  ]).default("concept").notNull(),
+  createdByRole: mysqlEnum("createdByRole", [
+    "user", "comfortabel_employee", "manager", "admin", "migration"
+  ]).default("user").notNull(),
+  createdByUserId: int("createdByUserId").references(() => users.id),
+  isActive: boolean("isActive").default(true).notNull(),
   buildYear: int("buildYear"),
   propertyType: mysqlEnum("propertyType", [
     "tussenwoning", "hoekwoning", "vrijstaand", "appartement", "bedrijfspand", "overig"
@@ -327,3 +355,124 @@ export const referralCodes = mysqlTable("referralCodes", {
 });
 export type ReferralCode = typeof referralCodes.$inferSelect;
 export type InsertReferralCode = typeof referralCodes.$inferInsert;
+
+// ─── Property Members (koppeltabel gebruiker ↔ paspoort, met rol) ─────────────
+// Replaces customers.userId as the ownership/visibility driver in 1.0.
+// One passport can have many members; one user can be member of many passports.
+// A member only sees sensitive passport data once status = "active".
+export const propertyMembers = mysqlTable("propertyMembers", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  userId: int("userId").notNull().references(() => users.id),
+  role: mysqlEnum("role", [
+    "pending_applicant", // claim ingediend, nog niet bevestigd — GEEN toegang tot gevoelige data
+    "owner",
+    "tenant",
+    "partner",
+    "business_manager",
+    "comfortabel_employee",
+    "manager",
+    "admin",
+  ]).default("pending_applicant").notNull(),
+  status: mysqlEnum("status", ["pending", "active", "revoked"]).default("pending").notNull(),
+  confirmedBy: int("confirmedBy").references(() => users.id),
+  confirmedAt: timestamp("confirmedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PropertyMember = typeof propertyMembers.$inferSelect;
+export type InsertPropertyMember = typeof propertyMembers.$inferInsert;
+
+// ─── Change Requests (wijzigverzoeken op vergrendelde velden A/B) ─────────────
+export const changeRequests = mysqlTable("changeRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  requestedBy: int("requestedBy").notNull().references(() => users.id),
+  fieldCategory: mysqlEnum("fieldCategory", ["A", "B"]).notNull(), // A=systeemdata, B=gevalideerde data
+  fieldName: varchar("fieldName", { length: 100 }).notNull(),
+  currentValue: text("currentValue"),
+  proposedValue: text("proposedValue"),
+  note: text("note"),
+  status: mysqlEnum("status", ["open", "approved", "rejected"]).default("open").notNull(),
+  reviewedBy: int("reviewedBy").references(() => users.id),
+  reviewedAt: timestamp("reviewedAt"),
+  reviewNote: text("reviewNote"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ChangeRequest = typeof changeRequests.$inferSelect;
+export type InsertChangeRequest = typeof changeRequests.$inferInsert;
+
+// ─── Audit Log (wie deed wat, wanneer) ────────────────────────────────────────
+export const auditLog = mysqlTable("auditLog", {
+  id: int("id").autoincrement().primaryKey(),
+  actorUserId: int("actorUserId").references(() => users.id),
+  action: varchar("action", { length: 64 }).notNull(), // e.g. "property.create", "member.confirm", "field.update", "passport.merge"
+  entityType: varchar("entityType", { length: 64 }).notNull(), // e.g. "property", "propertyMember", "user", "document"
+  entityId: int("entityId"),
+  previousValue: text("previousValue"), // JSON snapshot
+  newValue: text("newValue"),           // JSON snapshot
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AuditLog = typeof auditLog.$inferSelect;
+export type InsertAuditLog = typeof auditLog.$inferInsert;
+
+// ─── User Profile (persoonsgebonden dossierlaag — stub voor 1.x) ──────────────
+export const userProfile = mysqlTable("userProfile", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id).unique(),
+  phone: varchar("phone", { length: 30 }),
+  preferredContact: mysqlEnum("preferredContact", ["email", "phone", "none"]).default("email"),
+  marketingOptIn: boolean("marketingOptIn").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserProfile = typeof userProfile.$inferSelect;
+export type InsertUserProfile = typeof userProfile.$inferInsert;
+
+// ─── Consents (toestemmingen voor data delen — stub voor 1.x) ─────────────────
+export const consents = mysqlTable("consents", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  consentType: varchar("consentType", { length: 64 }).notNull(), // e.g. "data_sharing", "marketing", "ai_processing"
+  granted: boolean("granted").default(false).notNull(),
+  grantedAt: timestamp("grantedAt"),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Consent = typeof consents.$inferSelect;
+export type InsertConsent = typeof consents.$inferInsert;
+
+// ─── Notifications (in-app meldingen — stub voor 1.x) ─────────────────────────
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: text("body"),
+  type: varchar("type", { length: 64 }).default("info").notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  linkUrl: text("linkUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = typeof notifications.$inferInsert;
+
+// ─── Dossier Notes (persoonlijke notities, niet aan één woning gebonden — stub) ─
+export const dossierNotes = mysqlTable("dossierNotes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  propertyId: int("propertyId").references(() => properties.id), // optioneel gekoppeld
+  title: varchar("title", { length: 200 }),
+  body: text("body"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type DossierNote = typeof dossierNotes.$inferSelect;
+export type InsertDossierNote = typeof dossierNotes.$inferInsert;

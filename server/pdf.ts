@@ -181,7 +181,7 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
       }
     }
 
-    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId)).limit(1);
+    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
     const allInspections = await db.select().from(inspections).where(eq(inspections.propertyId, propertyId)).orderBy(desc(inspections.inspectionDate));
     const latestInspection = allInspections.find(i => i.status === "afgerond");
     const issues = await db.select().from(maintenanceIssues).where(eq(maintenanceIssues.propertyId, propertyId));
@@ -465,7 +465,7 @@ pdfRouter.get("/verduurzaming/:propertyId", async (req, res) => {
       }
     }
 
-    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId)).limit(1);
+    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
     const displayName = customer
       ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.companyName || "Eigenaar"
       : "Eigenaar";
@@ -606,7 +606,7 @@ pdfRouter.get("/subsidies/:propertyId", async (req, res) => {
       }
     }
 
-    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId)).limit(1);
+    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
     const displayName = customer
       ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.companyName || "Eigenaar"
       : "Eigenaar";

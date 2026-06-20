@@ -229,3 +229,97 @@
 - [ ] Admin: activatie-funnel widget (aangemeld → woning toegevoegd → actief na 7 dagen)
 - [ ] Admin: referral leaderboard (wie heeft meeste leden aangebracht)
 - [ ] Admin: e-mail log overzicht (welke e-mails verstuurd per gebruiker)
+
+## Fase 14: MijnComfortabel 1.0 — Datamodel, Rechten & Accountflow herziening
+
+### Analyse (bug: klant-paspoort != beheer-paspoort)
+- [ ] Database analyseren: properties/customers/users tabellen + foreign keys
+- [ ] Create-flows vergelijken: klant-zelfregistratie vs beheer-aanmaak
+- [ ] Exact lokaliseren waar het verschil ontstaat (ownership/userId/createdBy)
+- [ ] Analyse documenteren
+
+### Datamodel
+- [ ] WoningPaspoort adresgebonden maken (uniek op postcode + huisnummer + toevoeging)
+- [ ] Duplicate prevention op adres (DB unique constraint + applicatie-check)
+- [ ] Eigen Huis Dossier tabel (persoonsgebonden, per gebruiker)
+- [ ] Koppeltabel property_users met rol (eigenaar/huurder/partner/beheerder/medewerker)
+- [ ] Datavelden classificeren: A systeemdata, B gevalideerde data, C klantdata
+- [ ] Wijzigverzoeken tabel (change_requests)
+
+### Database migratie
+- [ ] Nieuwe tabellen aanmaken via migratie
+- [ ] Bestaande properties migreren naar nieuwe structuur
+- [ ] Dubbele/foutieve records opschonen
+
+### Backend
+- [ ] Unified create-flow: klant en beheer maken identiek paspoort-record
+- [ ] Adres duplicate-check procedure
+- [ ] Rolgebaseerde procedures (rechtenstructuur per rol)
+- [ ] Veld-vergrendeling: systeemdata + gevalideerde data niet door klant wijzigbaar
+- [ ] Wijzigverzoeken API: indienen, goedkeuren, afwijzen
+- [ ] Beheer: paspoorten samenvoegen, gebruiker deactiveren/verwijderen, rol wijzigen
+
+### Accountflow 1.0
+- [ ] Registratie -> adres invullen -> duplicate check -> koppelen of nieuw paspoort
+- [ ] Automatisch Eigen Huis Dossier aanmaken en koppelen aan paspoort
+
+### UI
+- [ ] Rechtenmatrix visueel (klant: wat zelf / wat alleen Comfortabel / wat officieel)
+- [ ] Veld-vergrendeling visueel (slotjes op gevalideerde/systeemvelden)
+- [ ] Wijzigverzoek-knop bij vergrendelde velden
+- [ ] Beheer: statuslabels concept / ingevuld / gevalideerd / aandacht nodig
+
+### Testplan (verplicht, alle 12 scenario's)
+- [ ] klant maakt nieuw account aan
+- [ ] klant maakt nieuw adres aan
+- [ ] klant vult bestaand adres in (koppeling)
+- [ ] beheer maakt hetzelfde adres aan (duplicate prevention)
+- [ ] koppeling gebruiker aan bestaand WoningPaspoort
+- [ ] beheer wijzigt data
+- [ ] klant probeert vergrendelde data te wijzigen (geweigerd)
+- [ ] klant uploadt documenten
+- [ ] beheer valideert gegevens
+- [ ] gebruiker deactiveren
+- [ ] gebruiker verwijderen
+- [ ] WoningPaspoort samenvoegen
+- [ ] TypeScript: geen fouten
+
+## Fase 14b: Aanscherpingen vóór implementatie (akkoord klant)
+
+### Datamodel hardening
+- [ ] properties: BAG-velden — bagId, bagObjectId (verblijfsobject), bagNumberDesignationId (nummeraanduiding), addition, houseLetter
+- [ ] properties: normalizedAddressKey (uniek), addressValidationStatus, addressSource
+- [ ] properties: status (concept/ingevuld/gevalideerd/aandacht), createdByRole
+- [ ] propertyMembers rollen: pending_applicant, owner, tenant, partner, business_manager, comfortabel_employee, manager, admin
+- [ ] users.role enum: user, comfortabel_employee, manager, admin
+- [ ] auditLog tabel: actorUserId, action, entityType, entityId, previousValue, newValue, ipAddress, createdAt
+- [ ] Toekomststubs: userProfile, consents, notifications, dossierNotes (subscriptions bestaat al)
+
+### Pending-claim regel (HARD)
+- [ ] Bestaand adres -> rol pending_applicant, GEEN toegang tot gevoelige woningdata/documenten/inspecties
+- [ ] Beheer moet claim + rol expliciet bevestigen voordat toegang vrijkomt
+- [ ] UI-tekst: "We hebben dit adres al gevonden. Je aanvraag is ontvangen. Comfortabel controleert de koppeling."
+
+### Server-side + DB autorisatie (3 lagen)
+- [ ] Autorisatie server-side in tRPC procedures (niet alleen frontend visibility)
+- [ ] Categorie A/B mutaties door klant -> keihard FORBIDDEN op API-niveau
+- [ ] Database unique constraint op normalizedAddressKey
+
+### Test-first (vóór backend)
+- [ ] Test: twee gebruikers maken tegelijk hetzelfde adres aan -> 1 paspoort
+- [ ] Test: beheer maakt hetzelfde adres aan als klant -> duplicaat herkend
+- [ ] Test: bestaande adresclaim geeft GEEN directe toegang
+- [ ] Test: klant kan categorie A/B NIET via API wijzigen
+- [ ] Test: medewerker kan GEEN gebruikers beheren
+- [ ] Test: samenvoegen behoudt documenten, rollen, onderhoudspunten
+- [ ] Test: deactiveren verwijdert toegang, behoudt paspoort
+- [ ] Test: verwijderen gebruiker wist persoonsgegevens, behoudt woninghistorie
+
+### Migratie hardening
+- [ ] canonicalRecordScore = velden + documenten + users + inspecties + recentheid + validatiestatus
+- [ ] Verplicht vóór live: back-up, dry-run rapport, merge-lijst, conflictenlijst, rollback-plan
+- [ ] Registraties tijdelijk blokkeren tijdens live migratie
+- [ ] Logging oude id -> nieuwe id
+
+### Volgorde
+- [ ] Styling/cosmetica pas NA aantoonbaar stabiele kern

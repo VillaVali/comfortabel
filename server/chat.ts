@@ -161,7 +161,7 @@ chatRouter.get("/:propertyId/history", async (req, res) => {
       const [cust] = await db
         .select()
         .from(customers)
-        .where(and(eq(customers.id, prop.customerId), eq(customers.userId, userRow.id)))
+        .where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, userRow.id)))
         .limit(1);
       if (!cust) { res.status(403).json({ error: "Geen toegang" }); return; }
     }
@@ -240,7 +240,7 @@ chatRouter.post("/:propertyId", async (req, res) => {
       const [cust] = await db
         .select()
         .from(customers)
-        .where(and(eq(customers.id, prop.customerId), eq(customers.userId, user.id)))
+        .where(and(eq(customers.id, prop.customerId ?? -1), eq(customers.userId, user.id)))
         .limit(1);
       if (!cust) {
         res.status(403).json({ error: "Geen toegang" });
