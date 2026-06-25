@@ -232,11 +232,11 @@
 
 ## Fase 14: MijnComfortabel 1.0 — Datamodel, Rechten & Accountflow herziening
 
-### Analyse (bug: klant-paspoort != beheer-paspoort)
-- [ ] Database analyseren: properties/customers/users tabellen + foreign keys
-- [ ] Create-flows vergelijken: klant-zelfregistratie vs beheer-aanmaak
-- [ ] Exact lokaliseren waar het verschil ontstaat (ownership/userId/createdBy)
-- [ ] Analyse documenteren
+### Analyse (bug: klant-paspoort != beheer-paspoort) [VOLTOOID]
+- [x] Database analyseren: properties/customers/users tabellen + foreign keys
+- [x] Create-flows vergelijken: klant createOwn vs beheer create (verschillende ownership-paden)
+- [x] Exact gelokaliseerd: geen adres-uniciteit + gescheiden create-flows + customers.userId-koppeling -> duplicaten + inconsistente paspoorten
+- [x] Opgelost: verenigde createOrClaim + normalizedAddressKey UNIQUE + propertyMembers membership-model
 
 ### Datamodel
 - [x] WoningPaspoort adresgebonden maken (uniek op postcode + huisnummer + toevoeging)
@@ -313,7 +313,7 @@
 - [x] Test: klant kan categorie A/B NIET wijzigen (canMutateField/requiresChangeRequest)
 - [x] Test: medewerker kan GEEN gebruikers beheren (canManageUsers)
 - [x] Test: samenvoegen behoudt het rijkste record (computeCanonicalScore/pickCanonical)
-- [ ] Test: deactiveren/verwijderen gebruiker (gepland volgende iteratie)
+- [x] Test: deactiveren/verwijderen gebruiker (scenarios.test.ts #10/#11 + integration.test.ts caller-niveau)
 
 ### Migratie hardening
 - [x] canonicalRecordScore = velden + documenten + users + inspecties + recentheid
@@ -323,7 +323,7 @@
 - [ ] Registraties tijdelijk blokkeren tijdens live migratie (niet nodig: gefaseerde uitrol op testdata)
 
 ### Volgorde
-- [ ] Styling/cosmetica pas NA aantoonbaar stabiele kern
+- [x] Styling/cosmetica pas NA aantoonbaar stabiele kern (kern eerst geleverd; UI-laag daarna)
 
 ### Consistentie 3-lagen handhaving (afronding stabiele kern)
 - [x] Beheer-aanmaak (properties.create) gebruikt zelfde dupcheck + normalizedAddressKey als klant (createOrClaim)
@@ -351,3 +351,11 @@
 - [x] Bug gevonden+gefixt: surfaceM2/buildYear/propertyType + WOZ/kadaster/eigendom waren NIET beschermd -> nu categorie A (BAG-regel)
 - [x] Client CLIENT_FIELD_CATEGORY gelijkgetrokken met server FIELD_CATEGORY
 - [x] 100/100 tests groen, TypeScript foutloos
+
+### Deploy-readiness: PDF zonder puppeteer (vóór publicatie) [VOLTOOID]
+- [x] htmlToPdf vervangen door Node-only aanpak (printableHtml in server/lib/printable.ts)
+- [x] Auto-print script + "Opslaan als PDF"-knop in de HTML-rapporten (verborgen bij printen)
+- [x] puppeteer-core dependency verwijderd uit package.json
+- [x] Alle 5 rapport-endpoints serveren print-klare HTML (woningpaspoort, verduurzaming, subsidies, onderhoudsrapport, inspectierapport)
+- [x] Endpoint geverifieerd: HTTP 401 auth-gate i.p.v. 500-crash (geen Chromium-afhankelijkheid)
+- [x] TypeScript foutloos; 107 tests groen; dev server gezond

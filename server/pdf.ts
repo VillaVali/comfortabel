@@ -1,5 +1,4 @@
 import { Router } from "express";
-import puppeteer from "puppeteer-core";
 import { getDb } from "./db";
 import {
   customers,
@@ -16,27 +15,7 @@ import type { AccountRole } from "./lib/passport";
 
 export const pdfRouter = Router();
 
-// --- Puppeteer helper ---------------------------------------------------------
-
-async function htmlToPdf(html: string): Promise<Buffer> {
-  const browser = await puppeteer.launch({
-    executablePath: "/usr/bin/chromium",
-    args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
-    headless: true,
-  });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "load" });
-    const pdf = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "0", right: "0", bottom: "0", left: "0" },
-    });
-    return Buffer.from(pdf);
-  } finally {
-    await browser.close();
-  }
-}
+import { printableHtml } from "./lib/printable";
 
 // --- LLM helper ---------------------------------------------------------------
 
@@ -432,10 +411,8 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
       return res.send(html);
     }
 
-    const pdfBuffer = await htmlToPdf(html);
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="woningpaspoort-${property.street.replace(/\s+/g, "-")}-${property.houseNumber}.pdf"`);
-    res.send(pdfBuffer);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.send(printableHtml(html));
 
   } catch (err) {
     console.error("Woningpaspoort PDF error:", err);
@@ -570,10 +547,8 @@ Houd het praktisch en actionable. Gebruik realistische Nederlandse marktprijzen 
       return res.send(html);
     }
 
-    const pdfBuffer = await htmlToPdf(html);
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="verduurzamingsadvies-${property.street.replace(/\s+/g, "-")}-${property.houseNumber}.pdf"`);
-    res.send(pdfBuffer);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.send(printableHtml(html));
 
   } catch (err) {
     console.error("Verduurzaming rapport error:", err);
@@ -707,10 +682,8 @@ Gebruik actuele Nederlandse subsidiebedragen van 2024-2025. Wees specifiek en re
       return res.send(html);
     }
 
-    const pdfBuffer = await htmlToPdf(html);
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="subsidies-${property.street.replace(/\s+/g, "-")}-${property.houseNumber}.pdf"`);
-    res.send(pdfBuffer);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.send(printableHtml(html));
 
   } catch (err) {
     console.error("Subsidies rapport error:", err);
@@ -854,10 +827,8 @@ pdfRouter.get("/onderhoudsrapport/:propertyId", async (req, res) => {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       return res.send(html);
     }
-    const pdfBuffer = await htmlToPdf(html);
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="onderhoudsrapport-${year}-${property.street.replace(/\s+/g, "-")}-${property.houseNumber}.pdf"`);
-    res.send(pdfBuffer);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.send(printableHtml(html));
   } catch (err) {
     console.error("Onderhoudsrapport error:", err);
     res.status(500).json({ error: "Failed to generate report" });
@@ -986,10 +957,8 @@ pdfRouter.get("/inspectierapport/:propertyId", async (req, res) => {
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       return res.send(html);
     }
-    const pdfBuffer = await htmlToPdf(html);
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="inspectierapport-${property.street.replace(/\s+/g, "-")}-${property.houseNumber}.pdf"`);
-    res.send(pdfBuffer);
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.send(printableHtml(html));
   } catch (err) {
     console.error("Inspectierapport error:", err);
     res.status(500).json({ error: "Failed to generate report" });
