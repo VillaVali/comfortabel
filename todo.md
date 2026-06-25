@@ -259,8 +259,9 @@
 - [x] Beheer: paspoorten samenvoegen (migratie), claim bevestigen/intrekken, rol wijzigen
 
 ### Accountflow 1.0
-- [ ] Registratie -> adres invullen -> duplicate check -> koppelen of nieuw paspoort
-- [ ] Automatisch Eigen Huis Dossier aanmaken en koppelen aan paspoort
+- [x] Registratie -> adres invullen -> duplicate check -> koppelen of nieuw paspoort (register + createOrClaim keten)
+- [x] Automatisch Eigen Huis Dossier (userProfile) aanmaken bij registratie + idempotent borgen in createOrClaim; klant beheert eigen contactdata (myProfile/updateMyProfile, categorie C)
+- [x] Klant-UI: profielpagina /mijn/profiel (telefoon, contactvoorkeur, marketing opt-in) met loading/error/success states + nav-links (desktop + mobiel)
 
 ### UI
 - [x] Klant onboarding: createOrClaim flow met claim-scherm bij bestaand adres
@@ -293,7 +294,7 @@
 - [x] propertyMembers rollen: pending_applicant, owner, tenant, partner, business_manager, comfortabel_employee, manager, admin
 - [x] users.role enum: user, comfortabel_employee, manager, admin
 - [x] auditLog tabel: actorUserId, action, entityType, entityId, previousValue, newValue, ipAddress, createdAt
-- [ ] Toekomststubs: userProfile, consents, notifications, dossierNotes (niet in deze iteratie — subscriptions bestaat al)
+- [x] Toekomststubs: userProfile, consents, notifications, dossierNotes (tabellen live; userProfile nu actief in gebruik)
 
 ### Pending-claim regel (HARD)
 - [x] Bestaand adres -> rol pending_applicant, GEEN toegang tot gevoelige woningdata/documenten/inspecties

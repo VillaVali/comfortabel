@@ -21,6 +21,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import ClientOnboarding from "./pages/client/Onboarding";
 import AIHuismeester from "./pages/client/AIHuismeester";
+import ClientProfile from "./pages/client/Profile";
 import Privacy from "./pages/Privacy";
 import AlgemeneVoorwaarden from "./pages/AlgemeneVoorwaarden";
 
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/admin/validatie" component={AdminValidation} />
         {/* Client routes */}
         <Route path="/mijn" component={ClientDashboard} />
+        <Route path="/mijn/profiel" component={ClientProfile} />
         <Route path="/mijn/onboarding" component={ClientOnboarding} />
         <Route path="/mijn/woning/:id" component={ClientProperty} />
         <Route path="/mijn/woning/:propertyId/huismeester" component={AIHuismeester} />

@@ -145,6 +145,17 @@ authRouter.post("/register", async (req, res) => {
       }
     }
 
+    // Create the personal "Eigen Huis Dossier" shell (userProfile) for this account.
+    // This is the person-bound dossier that lives alongside the address-bound
+    // WoningPaspoort. Failure here must never block registration.
+    try {
+      const { userProfile } = await import("../drizzle/schema");
+      await db.insert(userProfile).values({ userId, preferredContact: "email", marketingOptIn: false });
+      console.log(`[Auth] userProfile (Eigen Huis Dossier) created for user ${userId}`);
+    } catch (profileErr) {
+      console.error(`[Auth] Failed to create userProfile for user ${userId}:`, profileErr);
+    }
+
     // Send welcome email to new user
     const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
     const loginUrl = `${origin}/inloggen`;

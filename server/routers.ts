@@ -17,6 +17,7 @@ import {
   invitations,
   propertyMembers,
   changeRequests,
+  userProfile,
 } from "../drizzle/schema";
 import { sendInvitationEmail } from "./email";
 import { eq, desc, and, asc } from "drizzle-orm";
@@ -1078,7 +1079,57 @@ const passportRouter = t.router({
         newValue: { normalizedAddressKey: key, role: "owner" },
         ipAddress: ip,
       });
+      // Idempotently ensure the owner has a personal Eigen Huis Dossier shell.
+      // Covers accounts created before registration auto-created one (e.g. OAuth).
+      try {
+        const existingProfile = await db
+          .select({ id: userProfile.id })
+          .from(userProfile)
+          .where(eq(userProfile.userId, ctx.user.id))
+          .limit(1);
+        if (!existingProfile[0]) {
+          await db.insert(userProfile).values({ userId: ctx.user.id, preferredContact: "email", marketingOptIn: false });
+        }
+      } catch (e) {
+        console.error("[passport.createOrClaim] ensureUserProfile failed", e);
+      }
       return { outcome: "created" as const, propertyId };
+    }),
+
+  /** Personal "Eigen Huis Dossier" profile of the current user (Category C data). */
+  myProfile: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    const rows = await db.select().from(userProfile).where(eq(userProfile.userId, ctx.user.id)).limit(1);
+    if (rows[0]) return rows[0];
+    // Lazily create the dossier shell if it does not exist yet.
+    await db.insert(userProfile).values({ userId: ctx.user.id, preferredContact: "email", marketingOptIn: false });
+    const created = await db.select().from(userProfile).where(eq(userProfile.userId, ctx.user.id)).limit(1);
+    return created[0];
+  }),
+
+  /** Update own personal dossier — only Category C personal fields. */
+  updateMyProfile: protectedProcedure
+    .input(
+      z.object({
+        phone: z.string().max(30).optional(),
+        preferredContact: z.enum(["email", "phone", "none"]).optional(),
+        marketingOptIn: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const existing = await db.select({ id: userProfile.id }).from(userProfile).where(eq(userProfile.userId, ctx.user.id)).limit(1);
+      if (!existing[0]) {
+        await db.insert(userProfile).values({ userId: ctx.user.id, preferredContact: "email", marketingOptIn: false });
+      }
+      await db.update(userProfile).set({
+        ...(input.phone !== undefined ? { phone: input.phone } : {}),
+        ...(input.preferredContact !== undefined ? { preferredContact: input.preferredContact } : {}),
+        ...(input.marketingOptIn !== undefined ? { marketingOptIn: input.marketingOptIn } : {}),
+      }).where(eq(userProfile.userId, ctx.user.id));
+      return { success: true };
     }),
 
   /** Passports the current user can actually see (active membership or legacy link). */

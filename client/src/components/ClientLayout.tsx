@@ -1,7 +1,7 @@
 import { useAuth } from "../hooks/useAuth";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { Building2, LogOut, Home, ChevronLeft, Bot } from "lucide-react";
+import { Building2, LogOut, Home, ChevronLeft, Bot, User } from "lucide-react";
 
 export default function ClientLayout({
   children,
@@ -68,6 +68,13 @@ export default function ClientLayout({
               <Home className="w-4 h-4" />
               Mijn woningen
             </a>
+            <a
+              href="/mijn/profiel"
+              className="hidden sm:flex items-center gap-1.5 text-white/80 hover:text-white text-sm transition-colors"
+            >
+              <User className="w-4 h-4" />
+              Profiel
+            </a>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#C9A84C] flex items-center justify-center text-[#1E3A5F] font-bold text-xs">
                 {user?.name?.charAt(0) || "K"}
@@ -117,6 +124,15 @@ export default function ClientLayout({
         >
           <Bot className={`w-5 h-5 mb-1 ${location.includes("/huismeester") ? "text-[#C9A84C]" : ""}`} />
           Huismeester
+        </a>
+        <a
+          href="/mijn/profiel"
+          className={`flex-1 flex flex-col items-center justify-center py-3 min-h-[56px] text-xs font-medium transition-colors ${
+            location === "/mijn/profiel" ? "text-[#1E3A5F]" : "text-slate-400 hover:text-slate-600"
+          }`}
+        >
+          <User className={`w-5 h-5 mb-1 ${location === "/mijn/profiel" ? "text-[#C9A84C]" : ""}`} />
+          Profiel
         </a>
         <button
           onClick={logout}

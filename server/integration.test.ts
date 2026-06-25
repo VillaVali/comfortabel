@@ -38,7 +38,7 @@ vi.mock("./db", () => ({
 vi.mock("./_core/notification", () => ({ notifyOwner: async () => true }));
 
 import { appRouter } from "./routers";
-import { users, properties, propertyMembers, changeRequests, auditLog } from "../drizzle/schema";
+import { users, properties, propertyMembers, changeRequests, auditLog, userProfile } from "../drizzle/schema";
 import type { TrpcContext } from "./context";
 
 const T = {
@@ -47,6 +47,7 @@ const T = {
   propertyMembers: getTableName(propertyMembers),
   changeRequests: getTableName(changeRequests),
   auditLog: getTableName(auditLog),
+  userProfile: getTableName(userProfile),
 };
 
 function ctxFor(user: Partial<NonNullable<TrpcContext["user"]>> & { id: number; role: any }): TrpcContext {
@@ -78,6 +79,7 @@ beforeEach(() => {
     [T.propertyMembers]: [],
     [T.changeRequests]: [],
     [T.auditLog]: [],
+    [T.userProfile]: [],
   });
 });
 
@@ -237,5 +239,22 @@ describe("Scenario 11 — gebruiker verwijderen anonimiseert, behoudt woning", (
     await expect(
       appRouter.createCaller(ctxFor({ id: 3, role: "comfortabel_employee" })).users.delete({ id: 10 })
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+});
+
+describe("Eigen Huis Dossier — userProfile auto-create & update (Category C)", () => {
+  it("createOrClaim ensures a personal dossier shell for the owner", async () => {
+    await appRouter.createCaller(ctxFor({ id: 10, role: "user" })).passport.createOrClaim(ADDR);
+    const profiles = fake.rowsOf(T.userProfile).filter((p) => p.userId === 10);
+    expect(profiles).toHaveLength(1);
+  });
+
+  it("myProfile lazily creates the dossier and updateMyProfile changes only Category C fields", async () => {
+    const caller = appRouter.createCaller(ctxFor({ id: 11, role: "user" }));
+    const profile = await caller.passport.myProfile();
+    expect(profile?.userId).toBe(11);
+    await caller.passport.updateMyProfile({ phone: "0612345678", preferredContact: "phone", marketingOptIn: true });
+    const updated = fake.rowsOf(T.userProfile).find((p) => p.userId === 11);
+    expect(updated).toMatchObject({ phone: "0612345678", preferredContact: "phone", marketingOptIn: true });
   });
 });
