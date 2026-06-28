@@ -11,6 +11,8 @@ import {
   pickCanonical,
   fieldCategory,
   FIELD_CATEGORY,
+  isValidDutchPostalCode,
+  normalizeDutchPostalCode,
   type CanonicalCandidate,
 } from "./lib/passport";
 
@@ -331,5 +333,35 @@ describe("update lock end-to-end (category + role)", () => {
     expect(r.category).toBe("C");
     expect(r.direct).toBe(true);
     expect(r.needsCR).toBe(false);
+  });
+});
+
+// ── 10. Dutch postal code validation & normalization (sign-up route) ──────────
+
+describe("isValidDutchPostalCode", () => {
+  it("accepts valid codes regardless of spacing/casing", () => {
+    expect(isValidDutchPostalCode("1234 AB")).toBe(true);
+    expect(isValidDutchPostalCode("1234ab")).toBe(true);
+    expect(isValidDutchPostalCode(" 1234-AB ")).toBe(true);
+  });
+
+  it("rejects malformed codes", () => {
+    expect(isValidDutchPostalCode("0234AB")).toBe(false); // leading zero not allowed
+    expect(isValidDutchPostalCode("123AB")).toBe(false); // too few digits
+    expect(isValidDutchPostalCode("1234A")).toBe(false); // one letter
+    expect(isValidDutchPostalCode("12345")).toBe(false); // no letters
+    expect(isValidDutchPostalCode("")).toBe(false);
+  });
+});
+
+describe("normalizeDutchPostalCode", () => {
+  it("formats a valid code to canonical '1234 AB'", () => {
+    expect(normalizeDutchPostalCode("1234ab")).toBe("1234 AB");
+    expect(normalizeDutchPostalCode(" 1234-AB ")).toBe("1234 AB");
+  });
+
+  it("returns cleaned input for partial/invalid codes without crashing", () => {
+    expect(normalizeDutchPostalCode("123")).toBe("123");
+    expect(normalizeDutchPostalCode("")).toBe("");
   });
 });

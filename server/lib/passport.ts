@@ -70,6 +70,27 @@ export function normalizeAddressKey(input: {
   return parts.join("-");
 }
 
+/**
+ * Normalize a Dutch postal code to the canonical "1234 AB" display form.
+ * Strips punctuation/spaces, uppercases, and inserts a single space between the
+ * 4 digits and 2 letters. Returns the cleaned-but-unspaced string if it does not
+ * match the 4-digit + 2-letter pattern (so partial input is not destroyed).
+ */
+export function normalizeDutchPostalCode(raw: string): string {
+  const cleaned = String(raw ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const m = cleaned.match(/^(\d{4})([A-Z]{2})$/);
+  return m ? `${m[1]} ${m[2]}` : cleaned;
+}
+
+/**
+ * Whether a string is a valid Dutch postal code (4 digits + 2 letters, where the
+ * first digit is non-zero). Spacing and casing are ignored.
+ */
+export function isValidDutchPostalCode(raw: string): boolean {
+  const cleaned = String(raw ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return /^[1-9]\d{3}[A-Z]{2}$/.test(cleaned);
+}
+
 // ─── Sensitive-data access ──────────────────────────────────────────────────--
 
 /**

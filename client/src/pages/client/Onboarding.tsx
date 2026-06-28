@@ -6,16 +6,22 @@ import {
   Zap, ChevronRight, Loader2, CheckCircle2, ArrowRight
 } from "lucide-react";
 
+// Must stay in sync with the server enum in passport.createOrClaim
+// (tussenwoning | hoekwoning | vrijstaand | appartement | bedrijfspand | overig).
 const PROPERTY_TYPES = [
   { value: "tussenwoning", label: "Tussenwoning" },
   { value: "hoekwoning", label: "Hoekwoning" },
   { value: "vrijstaand", label: "Vrijstaande woning" },
   { value: "appartement", label: "Appartement" },
-  { value: "2-onder-1-kap", label: "2-onder-1-kapwoning" },
-  { value: "studio", label: "Studio" },
   { value: "bedrijfspand", label: "Bedrijfspand" },
-  { value: "anders", label: "Anders" },
+  { value: "overig", label: "Overig" },
 ];
+
+/** Valid Dutch postal code: 4 digits (first non-zero) + 2 letters, spacing/casing ignored. */
+function isValidDutchPostalCode(raw: string): boolean {
+  const cleaned = String(raw ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return /^[1-9]\d{3}[A-Z]{2}$/.test(cleaned);
+}
 
 const ENERGY_LABELS = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G", "Onbekend"];
 
@@ -269,6 +275,10 @@ export default function ClientOnboarding() {
                   onClick={() => {
                     if (!street || !houseNumber || !postalCode || !city) {
                       setError("Vul alle adresvelden in");
+                      return;
+                    }
+                    if (!isValidDutchPostalCode(postalCode)) {
+                      setError("Ongeldige postcode. Gebruik het formaat 1234 AB.");
                       return;
                     }
                     setError("");

@@ -11,7 +11,13 @@ export default function Login() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      window.location.href = user.role === "admin" ? "/admin" : "/mijn";
+      // Staff roles (admin/manager/comfortabel_employee) go to the back office;
+      // regular customers go to their portal. Mirrors Home.tsx redirect logic.
+      const isStaff =
+        user.role === "admin" ||
+        user.role === "manager" ||
+        user.role === "comfortabel_employee";
+      window.location.href = isStaff ? "/admin" : "/mijn";
     }
   }, [loading, isAuthenticated, user]);
 

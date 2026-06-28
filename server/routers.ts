@@ -26,6 +26,8 @@ import {
   canMutateField,
   requiresChangeRequest,
   fieldCategory,
+  isValidDutchPostalCode,
+  normalizeDutchPostalCode,
   type AccountRole,
 } from "./lib/passport";
 import { canUserAccessProperty, getMembership, assertPropertyAccess } from "./lib/membership";
@@ -1000,6 +1002,16 @@ const passportRouter = t.router({
     .mutation(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      // Validate Dutch postal code so a clear typo is caught before we create
+      // or claim a passport. The normalized key is casing/spacing independent,
+      // but we still reject obviously malformed postal codes early.
+      if (!isValidDutchPostalCode(input.postalCode)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Ongeldige postcode. Gebruik het formaat 1234 AB.",
+        });
+      }
+      input = { ...input, postalCode: normalizeDutchPostalCode(input.postalCode) };
       const ip = clientIp(ctx.req);
       const role = ctx.user.role as AccountRole;
       const key = normalizeAddressKey(input);
