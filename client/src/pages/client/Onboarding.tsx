@@ -55,16 +55,19 @@ export default function ClientOnboarding() {
   const completeOnboarding = trpc.passport.completeOnboarding.useMutation({
     onSuccess: (data) => {
       setIsFoundingMember(data.isFoundingMember);
-      utils.auth.me.invalidate();
+      // Invalidate me-cache FIRST, then move to klaar step.
+      // This ensures onboardingCompletedAt is set in DB before any redirect.
+      utils.auth.me.invalidate().then(() => {
+        setStep("klaar");
+      });
     },
   });
 
   const requestZeroMeasurement = trpc.passport.requestZeroMeasurement.useMutation({
     onSuccess: () => {
       setMeasurementRequested(true);
-      // Complete onboarding after requesting 0-meting
+      // Complete onboarding after requesting 0-meting — setStep("klaar") fires in completeOnboarding.onSuccess
       completeOnboarding.mutate();
-      setStep("klaar");
     },
     onError: (err: { message?: string }) => {
       setError(err.message || "Er ging iets mis bij de aanvraag.");
@@ -493,9 +496,8 @@ export default function ClientOnboarding() {
               <div className="flex gap-3 mt-6">
                 <button
                   onClick={() => {
-                    // Skip 0-meting, complete onboarding and go to portaal
+                    // Skip 0-meting — setStep("klaar") fires in completeOnboarding.onSuccess
                     completeOnboarding.mutate();
-                    setStep("klaar");
                   }}
                   className="flex-1 py-2.5 border border-gray-300 text-gray-600 font-medium rounded-xl text-sm hover:bg-gray-50 transition"
                 >
