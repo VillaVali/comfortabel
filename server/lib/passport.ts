@@ -332,3 +332,82 @@ export const FIELD_CATEGORY: Record<string, FieldCategory> = {
 export function fieldCategory(field: string): FieldCategory {
   return FIELD_CATEGORY[field] ?? "C";
 }
+
+// ─── Completeness score (datakwaliteit) ──────────────────────────────────────
+//
+// Stimulates users to fill in their WoningPaspoort completely.
+// Returns a 0–100 score and a list of missing field keys.
+// Pure function — no DB calls, easily testable.
+
+export interface CompletenessInput {
+  // Blok 1 – Basis
+  buildYear?: number | null;
+  surfaceM2?: number | null;
+  propertyType?: string | null;
+  energyLabel?: string | null;
+  // Blok 3 – Juridisch
+  ownershipType?: string | null;
+  // Blok 4 – Technisch
+  foundationType?: string | null;
+  roofType?: string | null;
+  heatingSystem?: string | null;
+  glazingType?: string | null;
+  wallInsulation?: string | null;
+  // Blok 2 – Financieel
+  wozValue?: number | null;
+  purchasePrice?: number | null;
+  // Documenten & Foto's (counts)
+  documentCount?: number;
+  photoCount?: number;
+  // Profiel
+  profilePhone?: string | null;
+  preferredContact?: string | null;
+}
+
+export interface CompletenessResult {
+  score: number; // 0–100
+  label: "Uitstekend" | "Goed" | "Onvolledig";
+  missingFields: string[];
+}
+
+const COMPLETENESS_WEIGHTS: Array<{
+  key: keyof CompletenessInput;
+  label: string;
+  weight: number;
+  check: (v: CompletenessInput) => boolean;
+}> = [
+  { key: "buildYear",        label: "Bouwjaar",                weight: 5,  check: v => !!v.buildYear },
+  { key: "surfaceM2",        label: "Woonoppervlak",           weight: 5,  check: v => !!v.surfaceM2 },
+  { key: "propertyType",     label: "Woningtype",              weight: 5,  check: v => !!v.propertyType },
+  { key: "energyLabel",      label: "Energielabel",            weight: 5,  check: v => !!v.energyLabel },
+  { key: "ownershipType",    label: "Eigendomsvorm",           weight: 5,  check: v => !!v.ownershipType && v.ownershipType !== "onbekend" },
+  { key: "foundationType",   label: "Fundering",               weight: 5,  check: v => !!v.foundationType && v.foundationType !== "onbekend" },
+  { key: "roofType",         label: "Daktype",                 weight: 5,  check: v => !!v.roofType && v.roofType !== "onbekend" },
+  { key: "heatingSystem",    label: "Verwarmingssysteem",      weight: 5,  check: v => !!v.heatingSystem && v.heatingSystem !== "onbekend" },
+  { key: "glazingType",      label: "Beglazing",               weight: 5,  check: v => !!v.glazingType && v.glazingType !== "onbekend" },
+  { key: "wallInsulation",   label: "Gevelisolatie",           weight: 5,  check: v => !!v.wallInsulation && v.wallInsulation !== "onbekend" },
+  { key: "wozValue",         label: "WOZ-waarde",              weight: 5,  check: v => !!v.wozValue },
+  { key: "purchasePrice",    label: "Koopsom",                 weight: 5,  check: v => !!v.purchasePrice },
+  { key: "documentCount",    label: "Minimaal 1 document",     weight: 10, check: v => (v.documentCount ?? 0) > 0 },
+  { key: "photoCount",       label: "Minimaal 1 foto",         weight: 10, check: v => (v.photoCount ?? 0) > 0 },
+  { key: "profilePhone",     label: "Telefoonnummer (profiel)",weight: 5,  check: v => !!v.profilePhone },
+  { key: "preferredContact", label: "Contactvoorkeur",         weight: 5,  check: v => !!v.preferredContact && v.preferredContact !== "none" },
+];
+
+export function calculateCompleteness(input: CompletenessInput): CompletenessResult {
+  let score = 0;
+  const missingFields: string[] = [];
+
+  for (const item of COMPLETENESS_WEIGHTS) {
+    if (item.check(input)) {
+      score += item.weight;
+    } else {
+      missingFields.push(item.label);
+    }
+  }
+
+  const label: CompletenessResult["label"] =
+    score >= 80 ? "Uitstekend" : score >= 50 ? "Goed" : "Onvolledig";
+
+  return { score, label, missingFields };
+}

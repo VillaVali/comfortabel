@@ -22,6 +22,8 @@ export const users = mysqlTable("users", {
   // Account-level role. Property-level roles live in propertyMembers.
   role: mysqlEnum("role", ["user", "comfortabel_employee", "manager", "admin"]).default("user").notNull(),
   isActive: boolean("isActive").default(true).notNull(),
+  isFoundingMember: boolean("isFoundingMember").default(false).notNull(),
+  onboardingCompletedAt: timestamp("onboardingCompletedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn"),
@@ -95,7 +97,7 @@ export const properties = mysqlTable("properties", {
   residents: int("residents"),
   energyLabel: mysqlEnum("energyLabel", ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]),
   subscriptionType: mysqlEnum("subscriptionType", [
-    "free", "digital", "basis", "plus", "premium"
+    "free", "digital", "basis", "plus", "premium", "founding"
   ]).default("free"),
   subscriptionActive: boolean("subscriptionActive").default(true).notNull(),
   subscriptionStartDate: timestamp("subscriptionStartDate"),
@@ -427,6 +429,8 @@ export const userProfile = mysqlTable("userProfile", {
   phone: varchar("phone", { length: 30 }),
   preferredContact: mysqlEnum("preferredContact", ["email", "phone", "none"]).default("email"),
   marketingOptIn: boolean("marketingOptIn").default(false).notNull(),
+  birthYear: int("birthYear"),
+  preferredContactTime: varchar("preferredContactTime", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -476,3 +480,19 @@ export const dossierNotes = mysqlTable("dossierNotes", {
 
 export type DossierNote = typeof dossierNotes.$inferSelect;
 export type InsertDossierNote = typeof dossierNotes.$inferInsert;
+
+// ─── Zero Measurement Requests (0-meting aanvragen) ──────────────────────────
+export const zeroMeasurementRequests = mysqlTable("zeroMeasurementRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+  phone: varchar("phone", { length: 30 }).notNull(),
+  preferredDate: varchar("preferredDate", { length: 30 }).notNull(), // ISO date string
+  notes: text("notes"),
+  status: mysqlEnum("status", ["aangevraagd", "ingepland", "uitgevoerd", "geannuleerd"]).default("aangevraagd").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ZeroMeasurementRequest = typeof zeroMeasurementRequests.$inferSelect;
+export type InsertZeroMeasurementRequest = typeof zeroMeasurementRequests.$inferInsert;

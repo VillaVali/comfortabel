@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Menu,
   X,
+  CalendarCheck,
 } from "lucide-react";
 
 const navItems: { href: string; label: string; icon: typeof LayoutDashboard; managerOnly?: boolean }[] = [
@@ -19,6 +20,7 @@ const navItems: { href: string; label: string; icon: typeof LayoutDashboard; man
   { href: "/admin/customers", label: "Klanten", icon: Users },
   { href: "/admin/properties", label: "Woningen", icon: Home },
   { href: "/admin/validatie", label: "Beheer & validatie", icon: ShieldCheck },
+  { href: "/admin/nulmetingen", label: "0-meting aanvragen", icon: CalendarCheck },
   { href: "/admin/users", label: "Gebruikers", icon: Shield, managerOnly: true },
 ];
 

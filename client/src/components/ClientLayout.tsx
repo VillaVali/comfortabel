@@ -2,6 +2,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Building2, LogOut, Home, ChevronLeft, Bot, User } from "lucide-react";
+import { trpc } from "../lib/trpc";
 
 export default function ClientLayout({
   children,
@@ -14,12 +15,28 @@ export default function ClientLayout({
 }) {
   const { user, loading, isAuthenticated, logout } = useAuth();
   const [location] = useLocation();
+  // Fetch current user's full record to check onboardingCompletedAt.
+  const { data: me } = trpc.auth.me.useQuery(undefined, { enabled: isAuthenticated });
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       window.location.href = "/login";
     }
   }, [loading, isAuthenticated]);
+
+  // Route-guard: force onboarding for users who haven't completed it yet.
+  // Exempt the onboarding route itself to avoid redirect loops.
+  useEffect(() => {
+    if (
+      !loading &&
+      isAuthenticated &&
+      me &&
+      !(me as any).onboardingCompletedAt &&
+      !location.startsWith("/mijn/onboarding")
+    ) {
+      window.location.href = "/mijn/onboarding";
+    }
+  }, [loading, isAuthenticated, me, location]);
 
   if (loading) {
     return (

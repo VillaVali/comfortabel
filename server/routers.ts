@@ -18,8 +18,10 @@ import {
   propertyMembers,
   changeRequests,
   userProfile,
+  zeroMeasurementRequests,
 } from "../drizzle/schema";
 import { sendInvitationEmail } from "./email";
+import { notifyOwner } from "./_core/notification";
 import { eq, desc, and, asc } from "drizzle-orm";
 import {
   normalizeAddressKey,
@@ -28,6 +30,7 @@ import {
   fieldCategory,
   isValidDutchPostalCode,
   normalizeDutchPostalCode,
+  calculateCompleteness,
   type AccountRole,
 } from "./lib/passport";
 import { canUserAccessProperty, getMembership, assertPropertyAccess } from "./lib/membership";
@@ -672,6 +675,8 @@ const usersRouter = t.router({
       email: users.email,
       role: users.role,
       isActive: users.isActive,
+      isFoundingMember: users.isFoundingMember,
+      onboardingCompletedAt: users.onboardingCompletedAt,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
       lastSignedIn: users.lastSignedIn,
@@ -1331,6 +1336,136 @@ const passportRouter = t.router({
         entityId: input.memberId,
         previousValue: { role: before[0].role, status: before[0].status },
         newValue: { role: input.role, status: "active" },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { success: true };
+    }),
+
+  /** Mark onboarding as completed for the current user and auto-set Founding Member if ≤100 users. */
+  completeOnboarding: protectedProcedure.mutation(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    // Count total users to determine founding member eligibility.
+    const countResult = await db.select({ id: users.id }).from(users);
+    const isFoundingMember = countResult.length <= 100;
+    await db.update(users).set({
+      onboardingCompletedAt: new Date(),
+      isFoundingMember,
+    }).where(eq(users.id, ctx.user.id));
+    return { success: true, isFoundingMember };
+  }),
+
+  /** Get completeness score for a property (includes document/photo counts). */
+  completeness: protectedProcedure
+    .input(z.object({ propertyId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await assertPropertyAccess(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, input.propertyId);
+      const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
+      if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
+      // Count documents and photos for this property.
+      const docs = await db.select({ id: documents.id, type: documents.type }).from(documents).where(eq(documents.propertyId, input.propertyId));
+      const documentCount = docs.filter(d => d.type !== "foto").length;
+      const photoCount = docs.filter(d => d.type === "foto").length;
+      // Get user profile for phone/contact.
+      const [profile] = await db.select().from(userProfile).where(eq(userProfile.userId, ctx.user.id)).limit(1);
+      return calculateCompleteness({
+        buildYear: prop.buildYear,
+        surfaceM2: prop.surfaceM2,
+        propertyType: prop.propertyType,
+        energyLabel: prop.energyLabel,
+        ownershipType: prop.ownershipType,
+        foundationType: prop.foundationType,
+        roofType: prop.roofType,
+        heatingSystem: prop.heatingSystem,
+        glazingType: prop.glazingType,
+        wallInsulation: prop.wallInsulation,
+        wozValue: prop.wozValue,
+        purchasePrice: prop.purchasePrice,
+        documentCount,
+        photoCount,
+        profilePhone: profile?.phone,
+        preferredContact: profile?.preferredContact,
+      });
+    }),
+
+  /** Request a 0-meting (physical inspection) for a property. */
+  requestZeroMeasurement: protectedProcedure
+    .input(z.object({
+      propertyId: z.number(),
+      phone: z.string().min(6).max(30),
+      preferredDate: z.string().min(1),
+      notes: z.string().max(500).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await assertPropertyAccess(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, input.propertyId);
+      const [prop] = await db.select().from(properties).where(eq(properties.id, input.propertyId)).limit(1);
+      if (!prop) throw new TRPCError({ code: "NOT_FOUND" });
+      const res = await db.insert(zeroMeasurementRequests).values({
+        userId: ctx.user.id,
+        propertyId: input.propertyId,
+        phone: input.phone,
+        preferredDate: input.preferredDate,
+        notes: input.notes,
+        status: "aangevraagd",
+      });
+      const reqId = Number((res[0] as any).insertId);
+      // Notify Comfortabel owner.
+      await notifyOwner({
+        title: `Nieuwe 0-meting aanvraag — ${prop.street} ${prop.houseNumber}, ${prop.city}`,
+        content: `Gebruiker ${ctx.user.name} (${ctx.user.email}) heeft een 0-meting aangevraagd.\n\nAdres: ${prop.street} ${prop.houseNumber}, ${prop.postalCode} ${prop.city}\nTelefoon: ${input.phone}\nVoorkeursdatum: ${input.preferredDate}\n${input.notes ? `Opmerkingen: ${input.notes}` : ""}`,
+      });
+      return { success: true, requestId: reqId };
+    }),
+
+  /** List all 0-meting requests (admin). */
+  listZeroMeasurements: staffProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    return db
+      .select({
+        id: zeroMeasurementRequests.id,
+        status: zeroMeasurementRequests.status,
+        phone: zeroMeasurementRequests.phone,
+        preferredDate: zeroMeasurementRequests.preferredDate,
+        notes: zeroMeasurementRequests.notes,
+        createdAt: zeroMeasurementRequests.createdAt,
+        propertyId: zeroMeasurementRequests.propertyId,
+        street: properties.street,
+        houseNumber: properties.houseNumber,
+        postalCode: properties.postalCode,
+        city: properties.city,
+        userName: users.name,
+        userEmail: users.email,
+      })
+      .from(zeroMeasurementRequests)
+      .innerJoin(properties, eq(properties.id, zeroMeasurementRequests.propertyId))
+      .innerJoin(users, eq(users.id, zeroMeasurementRequests.userId))
+      .orderBy(desc(zeroMeasurementRequests.createdAt));
+  }),
+
+  /** Update the status of a 0-meting request (staff only). */
+  updateZeroMeasurementStatus: staffProcedure
+    .input(z.object({
+      id: z.number(),
+      status: z.enum(["aangevraagd", "ingepland", "uitgevoerd", "geannuleerd"]),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      await db
+        .update(zeroMeasurementRequests)
+        .set({ status: input.status })
+        .where(eq(zeroMeasurementRequests.id, input.id));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "zeroMeasurement.statusUpdate",
+        entityType: "zeroMeasurementRequest",
+        entityId: input.id,
+        newValue: { status: input.status },
         ipAddress: clientIp(ctx.req),
       });
       return { success: true };

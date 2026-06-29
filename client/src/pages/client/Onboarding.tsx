@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
   Building2, Home, MapPin, Calendar, Ruler, Users,
-  Zap, ChevronRight, Loader2, CheckCircle2, ArrowRight
+  Zap, ChevronRight, Loader2, CheckCircle2, ArrowRight, Phone, Star
 } from "lucide-react";
 
 // Must stay in sync with the server enum in passport.createOrClaim
@@ -25,7 +25,7 @@ function isValidDutchPostalCode(raw: string): boolean {
 
 const ENERGY_LABELS = ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G", "Onbekend"];
 
-type Step = "welkom" | "woning" | "details" | "klaar" | "claim";
+type Step = "welkom" | "woning" | "details" | "nulmeting" | "klaar" | "claim";
 
 export default function ClientOnboarding() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -43,8 +43,34 @@ export default function ClientOnboarding() {
   const [energyLabel, setEnergyLabel] = useState("Onbekend");
   const [error, setError] = useState("");
   const [createdPropertyId, setCreatedPropertyId] = useState<number | null>(null);
+  const [isFoundingMember, setIsFoundingMember] = useState(false);
+  // 0-meting form
+  const [phone, setPhone] = useState("");
+  const [preferredDate, setPreferredDate] = useState("");
+  const [measurementNotes, setMeasurementNotes] = useState("");
+  const [measurementRequested, setMeasurementRequested] = useState(false);
 
   const utils = trpc.useUtils();
+
+  const completeOnboarding = trpc.passport.completeOnboarding.useMutation({
+    onSuccess: (data) => {
+      setIsFoundingMember(data.isFoundingMember);
+      utils.auth.me.invalidate();
+    },
+  });
+
+  const requestZeroMeasurement = trpc.passport.requestZeroMeasurement.useMutation({
+    onSuccess: () => {
+      setMeasurementRequested(true);
+      // Complete onboarding after requesting 0-meting
+      completeOnboarding.mutate();
+      setStep("klaar");
+    },
+    onError: (err: { message?: string }) => {
+      setError(err.message || "Er ging iets mis bij de aanvraag.");
+    },
+  });
+
   const createProperty = trpc.passport.createOrClaim.useMutation({
     onSuccess: (data: { outcome: string; propertyId: number }) => {
       setCreatedPropertyId(data.propertyId);
@@ -52,9 +78,11 @@ export default function ClientOnboarding() {
       utils.passport.myPassports.invalidate();
       utils.passport.myPendingClaims.invalidate();
       if (data.outcome === "created" || data.outcome === "already_member") {
-        setStep("klaar");
+        // After creating a property, go to 0-meting request step
+        setStep("nulmeting");
       } else {
-        // claim_pending
+        // claim_pending — complete onboarding and go to claim screen
+        completeOnboarding.mutate();
         setStep("claim");
       }
     },
@@ -109,24 +137,24 @@ export default function ClientOnboarding() {
         {/* Progress */}
         {step !== "klaar" && (
           <div className="flex items-center justify-center gap-2 mb-6">
-            {(["welkom", "woning", "details"] as Step[]).map((s, i) => (
+                    {(["welkom", "woning", "details", "nulmeting"] as Step[]).map((s, i) => (
               <div key={s} className="flex items-center gap-2">
                 <div
                   className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     step === s
                       ? "bg-[#C9A84C] text-white"
-                      : ["welkom", "woning", "details"].indexOf(step) > i
+                      : ["welkom", "woning", "details", "nulmeting"].indexOf(step) > i
                       ? "bg-green-500 text-white"
                       : "bg-white/20 text-white/50"
                   }`}
                 >
-                  {["welkom", "woning", "details"].indexOf(step) > i ? (
+                  {["welkom", "woning", "details", "nulmeting"].indexOf(step) > i ? (
                     <CheckCircle2 className="w-4 h-4" />
                   ) : (
                     i + 1
                   )}
                 </div>
-                {i < 2 && <div className="w-8 h-0.5 bg-white/20" />}
+                {i < 3 && <div className="w-8 h-0.5 bg-white/20" />}
               </div>
             ))}
           </div>
@@ -175,12 +203,7 @@ export default function ClientOnboarding() {
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              <button
-                onClick={() => { window.location.href = "/mijn"; }}
-                className="w-full py-2 text-sm text-gray-400 hover:text-gray-600 mt-2 transition"
-              >
-                Later doen
-              </button>
+
             </div>
           )}
 
@@ -406,7 +429,105 @@ export default function ClientOnboarding() {
             </div>
           )}
 
-          {/* ── Stap 4b: Claim ingediend (adres bestaat al) ── */}
+          {/* ── Stap 4: 0-meting aanvragen ── */}
+          {step === "nulmeting" && (
+            <div className="p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-[#C9A84C]/10 rounded-xl flex items-center justify-center">
+                  <Calendar className="w-5 h-5 text-[#C9A84C]" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">0-meting aanvragen</h2>
+                  <p className="text-xs text-gray-500">Stap 4 van 4 — uw woning professioneel in kaart laten brengen</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-[#1E3A5F]/5 border border-[#1E3A5F]/10 rounded-lg text-xs text-[#1E3A5F] mb-5 leading-relaxed">
+                <strong>Wat is de 0-meting?</strong> Een Comfortabel-adviseur bezoekt uw woning en vult samen met u het volledige WoningPaspoort™ in. Na de meting worden uw Woning Score™ en Mati’s analyses beschikbaar.
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Phone className="w-3.5 h-3.5 inline mr-1" />
+                    Telefoonnummer
+                  </label>
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="06-12345678"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <Calendar className="w-3.5 h-3.5 inline mr-1" />
+                    Voorkeursdatum
+                  </label>
+                  <input
+                    type="date"
+                    value={preferredDate}
+                    onChange={(e) => setPreferredDate(e.target.value)}
+                    min={new Date(Date.now() + 2 * 86400000).toISOString().split("T")[0]}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Opmerkingen (optioneel)</label>
+                  <textarea
+                    value={measurementNotes}
+                    onChange={(e) => setMeasurementNotes(e.target.value)}
+                    placeholder="Bijv. beschikbaarheid, toegang, specifieke vragen..."
+                    rows={2}
+                    maxLength={500}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] transition resize-none"
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
+              )}
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    // Skip 0-meting, complete onboarding and go to portaal
+                    completeOnboarding.mutate();
+                    setStep("klaar");
+                  }}
+                  className="flex-1 py-2.5 border border-gray-300 text-gray-600 font-medium rounded-xl text-sm hover:bg-gray-50 transition"
+                >
+                  Later plannen
+                </button>
+                <button
+                  onClick={() => {
+                    setError("");
+                    if (!phone) { setError("Vul uw telefoonnummer in"); return; }
+                    if (!preferredDate) { setError("Kies een voorkeursdatum"); return; }
+                    if (!createdPropertyId) return;
+                    requestZeroMeasurement.mutate({
+                      propertyId: createdPropertyId,
+                      phone,
+                      preferredDate,
+                      notes: measurementNotes || undefined,
+                    });
+                  }}
+                  disabled={requestZeroMeasurement.isPending}
+                  className="flex-1 py-2.5 bg-[#C9A84C] hover:bg-[#b8943f] text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 transition active:scale-[0.97] disabled:opacity-60"
+                >
+                  {requestZeroMeasurement.isPending ? (
+                    <><Loader2 className="w-4 h-4 animate-spin" />Aanvragen...</>
+                  ) : (
+                    <>0-meting aanvragen<CheckCircle2 className="w-4 h-4" /></>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Stap 5b: Claim ingediend (adres bestaat al) ── */}
           {step === "claim" && (
             <div className="p-8 text-center">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-amber-100 rounded-full mb-5">
@@ -434,19 +555,33 @@ export default function ClientOnboarding() {
             </div>
           )}
 
-          {/* ── Stap 4: Klaar ── */}
+          {/* ── Stap 5: Klaar ── */}
           {step === "klaar" && (
             <div className="p-8 text-center">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-5">
                 <CheckCircle2 className="w-10 h-10 text-green-500" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">Woningpaspoort™ aangemaakt!</h2>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">Onboarding voltooid!</h2>
               <p className="text-gray-500 text-sm mb-2">
                 <strong>{street} {houseNumber}, {city}</strong> is toegevoegd aan uw portaal.
               </p>
-              <p className="text-gray-400 text-xs mb-6">
-                U kunt het paspoort nu verder aanvullen met technische gegevens, documenten en meer.
-              </p>
+
+              {isFoundingMember && (
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#C9A84C]/10 border border-[#C9A84C]/30 rounded-full text-xs font-semibold text-[#C9A84C] mb-4">
+                  <Star className="w-3.5 h-3.5" />
+                  Founding Member — u behoort tot de eerste 100!
+                </div>
+              )}
+
+              {measurementRequested ? (
+                <p className="text-gray-400 text-xs mb-6 leading-relaxed">
+                  Uw 0-meting is aangevraagd. Een Comfortabel-adviseur neemt contact op om de afspraak te bevestigen.
+                </p>
+              ) : (
+                <p className="text-gray-400 text-xs mb-6">
+                  U kunt het paspoort nu verder aanvullen. Vraag een 0-meting aan via uw woning-dashboard.
+                </p>
+              )}
 
               <div className="space-y-3">
                 {createdPropertyId && (

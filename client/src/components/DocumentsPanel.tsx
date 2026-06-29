@@ -37,7 +37,9 @@ function formatBytes(bytes: number) {
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
-export default function DocumentsPanel({ propertyId, isAdmin }: { propertyId: number; isAdmin: boolean }) {
+export default function DocumentsPanel({ propertyId, isAdmin, canUpload }: { propertyId: number; isAdmin: boolean; canUpload?: boolean }) {
+  // canUpload: true for both admin and authenticated clients; defaults to isAdmin for backwards compat
+  const uploadAllowed = canUpload !== undefined ? canUpload : isAdmin;
   const { data: docs = [], refetch } = trpc.documents.list.useQuery({ propertyId });
   const deleteDoc = trpc.documents.delete.useMutation({
     onSuccess: () => { toast.success("Document verwijderd"); refetch(); },
@@ -73,7 +75,9 @@ export default function DocumentsPanel({ propertyId, isAdmin }: { propertyId: nu
       form.append("type", docType);
       form.append("title", docTitle || selectedFile.name);
 
-      const res = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
+      // Clients use /api/upload/client (no admin check); admins use /api/upload
+      const uploadUrl = isAdmin ? "/api/upload" : "/api/upload/client";
+      const res = await fetch(uploadUrl, { method: "POST", body: form, credentials: "include" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Upload mislukt");
 
@@ -101,8 +105,8 @@ export default function DocumentsPanel({ propertyId, isAdmin }: { propertyId: nu
 
   return (
     <div className="space-y-4">
-      {/* Upload area — admin only */}
-      {isAdmin && (
+      {/* Upload area — admin and authenticated clients */}
+      {uploadAllowed && (
         <div>
           {!showForm ? (
             <button

@@ -76,6 +76,7 @@ export default function ClientProperty() {
   const [crField, setCrField] = useState<{ field: string; label: string; current: string; category: "A" | "B" } | null>(null);
 
   const { data: property } = trpc.properties.get.useQuery({ id: propertyId });
+  const { data: completeness } = trpc.passport.completeness.useQuery({ propertyId }, { enabled: !!propertyId });
   const { data: myRequests = [] } = trpc.changeRequests.listMine.useQuery({ propertyId });
   const { data: inspections = [] } = trpc.inspections.listByProperty.useQuery({ propertyId });
   const { data: issues = [] } = trpc.maintenance.listIssues.useQuery({ propertyId });
@@ -254,6 +255,51 @@ export default function ClientProperty() {
           </div>
         )}
       </div>
+
+      {/* Completeness score widget */}
+      {completeness && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-semibold text-slate-800 text-sm">Dossier compleetheid</h3>
+              <p className="text-xs text-slate-400 mt-0.5">Hoe completer, hoe slimmer Mati adviseert</p>
+            </div>
+            <div className="text-right">
+              <span className={`text-2xl font-bold ${
+                completeness.score >= 80 ? "text-green-600" :
+                completeness.score >= 50 ? "text-amber-500" : "text-red-500"
+              }`}>{completeness.score}%</span>
+              <p className={`text-xs font-medium ${
+                completeness.score >= 80 ? "text-green-600" :
+                completeness.score >= 50 ? "text-amber-500" : "text-red-500"
+              }`}>{completeness.label}</p>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div className="w-full bg-slate-100 rounded-full h-2 mb-3">
+            <div
+              className={`h-2 rounded-full transition-all ${
+                completeness.score >= 80 ? "bg-green-500" :
+                completeness.score >= 50 ? "bg-amber-400" : "bg-red-400"
+              }`}
+              style={{ width: `${completeness.score}%` }}
+            />
+          </div>
+          {completeness.missingFields.length > 0 && (
+            <details className="group">
+              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-700 flex items-center gap-1 list-none">
+                <ChevronRight className="w-3.5 h-3.5 group-open:rotate-90 transition-transform" />
+                {completeness.missingFields.length} ontbrekende velden
+              </summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {completeness.missingFields.map((f) => (
+                  <span key={f} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{f}</span>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-6">
@@ -777,7 +823,7 @@ export default function ClientProperty() {
       {activeTab === "documenten" && (
         <div className="bg-white rounded-2xl border border-slate-200 p-5">
           {features.documentenBeperkt ? (
-            <DocumentsPanel propertyId={propertyId} isAdmin={false} />
+            <DocumentsPanel propertyId={propertyId} isAdmin={false} canUpload={true} />
           ) : (
             <LockedFeature tier={tier} feature="Documentenmap" />
           )}

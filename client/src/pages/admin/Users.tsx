@@ -2,7 +2,7 @@ import { useState } from "react";
 import AdminLayout from "../../components/AdminLayout";
 import { trpc } from "../../lib/trpc";
 import { toast } from "sonner";
-import { Shield, User, Clock, Plus, X, Eye, EyeOff, UserCheck, UserX } from "lucide-react";
+import { Shield, User, Clock, Plus, X, Eye, EyeOff, UserCheck, UserX, Star } from "lucide-react";
 
 export default function AdminUsers() {
   const { data: users = [], refetch } = trpc.users.list.useQuery();
@@ -188,7 +188,15 @@ export default function AdminUsers() {
                         {(u.name || u.email || "?").charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-slate-800">{u.name || "—"}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-medium text-slate-800">{u.name || "—"}</p>
+                          {u.isFoundingMember && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                              <Star className="w-2.5 h-2.5" />
+                              Founding
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500">{u.email}</p>
                       </div>
                     </div>

@@ -369,3 +369,28 @@
 - [x] Hernoeming: 'AI Huismeester' -> 'Mati — Jouw digitale woonvriend' (nav, dashboard, chat, persona, Register, Privacy, AV)
 - [x] Tests toegevoegd: isPassportValidated + canUseValidatedFeatures (5 nieuwe, 116 totaal groen)
 - [x] Build geverifieerd (tsc foutloos, 116 tests groen); checkpoint + rapportage
+
+## Fase 16 — Livegang 1 juli (48-uurs sprint)
+
+- [ ] A1: Schema: onboardingCompletedAt + isFoundingMember op users; zeroMeasurementRequests tabel; founding subscriptionType
+- [ ] A2: Route-guard verplichte onboarding in ClientLayout (redirect als onboardingCompletedAt null)
+- [ ] A3: Klant-document-upload (/api/upload/client met requireUser, DocumentsPanel client-upload UI)
+- [ ] A4: calculateCompleteness() helper + completenessScore in properties.get + UI voortgangsbalk in Property.tsx
+- [ ] B1: 0-meting aanvraagformulier (stap 4 onboarding + zeroMeasurementRequests procedure + notifyOwner)
+- [ ] B2: Founding Member status (auto-set bij registratie ≤100, badge in portaal, admin toggle)
+- [ ] B3: Compleetheidsscore zichtbaar in onboarding klaar-stap en dashboard PropertyCard
+- [ ] C1: userProfile uitbreiden met birthYear + preferredContactTime
+- [ ] C2: Tests voor calculateCompleteness, route-guard, 0-meting, founding member
+- [ ] C3: Checkpoint + publiceren
+
+## Fase 16 — 48-uurs livegang sprint (1 juli)
+
+- [x] A1: Schema-migratie — onboardingCompletedAt + isFoundingMember op users; founding op subscriptionType enum; zeroMeasurementRequests tabel; userProfile uitgebreid
+- [x] A2: Route-guard in ClientLayout — redirect naar /mijn/onboarding als onboardingCompletedAt null
+- [x] A3: Klant-upload — /api/upload/client route + DocumentsPanel canUpload prop voor klanten
+- [x] A4: Compleetheidsscore helper (calculateCompleteness) + widget in Property.tsx
+- [x] B1: 0-meting aanvraagformulier in Onboarding stap 3 + requestZeroMeasurement procedure + admin /admin/nulmetingen pagina + updateZeroMeasurementStatus procedure
+- [x] B2: Founding Member badge in admin gebruikerslijst (Users.tsx) + isFoundingMember in users.list select
+- [x] completeOnboarding procedure + aanroep in Onboarding.tsx (onboardingCompletedAt gezet bij afronden)
+- [x] notification.ts module aangemaakt in server/_core
+- [x] 116 tests groen, TypeScript foutloos
