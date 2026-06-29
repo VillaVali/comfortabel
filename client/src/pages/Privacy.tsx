@@ -43,8 +43,8 @@ export default function Privacy() {
               <ul className="list-disc list-inside space-y-1 text-gray-700 ml-2">
                 <li><strong>Accountgegevens:</strong> naam, e-mailadres, wachtwoord (versleuteld opgeslagen)</li>
                 <li><strong>Woninggegevens:</strong> adres, bouwjaar, type woning, technische kenmerken, energielabel, WOZ-waarde</li>
-                <li><strong>Gebruiksgegevens:</strong> inlogmomenten, gebruik van de AI Huismeester, gedownloade rapporten</li>
-                <li><strong>Communicatiegegevens:</strong> berichten aan de AI Huismeester (opgeslagen voor gespreksgeschiedenis)</li>
+                <li><strong>Gebruiksgegevens:</strong> inlogmomenten, gebruik van Mati (AI-assistent), gedownloade rapporten</li>
+                <li><strong>Communicatiegegevens:</strong> berichten aan Mati (AI-assistent) (opgeslagen voor gespreksgeschiedenis)</li>
                 <li><strong>Financiële gegevens:</strong> abonnementsinformatie (geen betaalgegevens — wij verwerken geen creditcardnummers)</li>
               </ul>
             </section>
@@ -54,7 +54,7 @@ export default function Privacy() {
               <p className="text-gray-700 mb-3">Wij gebruiken uw gegevens voor de volgende doeleinden:</p>
               <ul className="list-disc list-inside space-y-1 text-gray-700 ml-2">
                 <li>Het leveren en verbeteren van onze diensten (uitvoering overeenkomst)</li>
-                <li>Het genereren van gepersonaliseerde woningadviezen via de AI Huismeester</li>
+                <li>Het genereren van gepersonaliseerde woningadviezen via Mati (AI-assistent)</li>
                 <li>Het opstellen van PDF-rapporten over uw woning</li>
                 <li>Communicatie over uw account en abonnement</li>
                 <li>Naleving van wettelijke verplichtingen</li>

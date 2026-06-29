@@ -266,6 +266,42 @@ export function pickCanonical(candidates: CanonicalCandidate[]): number | null {
   return best.id;
 }
 
+// ─── Passport validation gate (Optie A) ─────────────────────────────────────-
+//
+// A self-created property starts with status "wacht_op_validatie". The owner is
+// an active member (so they can fill in their own Category C data and see the
+// property), but the value-delivering features — Woning Score, PDF reports and
+// the Mati assistant — stay LOCKED until Comfortabel validates the property
+// (0-meting) and moves it out of "wacht_op_validatie". This keeps validation the
+// gateway to premium value, enforced in one central place.
+
+export type PropertyStatus =
+  | "wacht_op_validatie"
+  | "concept"
+  | "ingevuld"
+  | "gevalideerd"
+  | "aandacht";
+
+/**
+ * Whether a property's value features (score, reports, Mati) are unlocked.
+ * Locked only while it is awaiting Comfortabel validation.
+ */
+export function isPassportValidated(status: string | null | undefined): boolean {
+  return status !== "wacht_op_validatie";
+}
+
+/**
+ * Whether `user` may use the value-delivering features of `property`.
+ * Staff always may (for support); a client only after validation.
+ */
+export function canUseValidatedFeatures(args: {
+  accountRole: AccountRole;
+  propertyStatus: string | null | undefined;
+}): boolean {
+  if (isStaffAccount(args.accountRole)) return true;
+  return isPassportValidated(args.propertyStatus);
+}
+
 // ─── Property field category map ──────────────────────────────────────────────
 //
 // Single source of truth for which property fields are protected. Kept here (in

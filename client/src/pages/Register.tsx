@@ -206,7 +206,7 @@ export default function Register() {
                 "Woningpaspoort™ aanmaken",
                 "Directe links naar BAG, WOZ en Energielabel",
                 "Basis onderhoudskalender",
-                "AI Huismeester (3 vragen/maand)",
+                "Mati — jouw digitale woonvriend (3 vragen/maand)",
               ].map((benefit) => (
                 <div key={benefit} className="flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5 text-[#C9A84C] flex-shrink-0" />

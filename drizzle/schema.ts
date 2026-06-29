@@ -80,7 +80,7 @@ export const properties = mysqlTable("properties", {
   ]).default("customer").notNull(),
   // Passport lifecycle status (shown to admin): concept / ingevuld / gevalideerd / aandacht.
   status: mysqlEnum("status", [
-    "concept", "ingevuld", "gevalideerd", "aandacht"
+    "wacht_op_validatie", "concept", "ingevuld", "gevalideerd", "aandacht"
   ]).default("concept").notNull(),
   createdByRole: mysqlEnum("createdByRole", [
     "user", "comfortabel_employee", "manager", "admin", "migration"

@@ -359,3 +359,13 @@
 - [x] Alle 5 rapport-endpoints serveren print-klare HTML (woningpaspoort, verduurzaming, subsidies, onderhoudsrapport, inspectierapport)
 - [x] Endpoint geverifieerd: HTTP 401 auth-gate i.p.v. 500-crash (geen Chromium-afhankelijkheid)
 - [x] TypeScript foutloos; 107 tests groen; dev server gezond
+
+## Fase 15 — Live-launch fixes (sessie jun 2026)
+
+- [x] Optie A: nieuwe zelf-aangemaakte woning start als wacht_op_validatie; score/rapporten/Mati gelockt tot staff valideert
+- [x] Access-gating: client portaal toont wachtbanner + gelockte features (score/rapport/Mati) bij wacht_op_validatie
+- [x] Admin validatie: sectie 'Nieuwe woningen — wacht op validatie' + 'Valideren & vrijgeven' knop in /admin/validatie
+- [x] Free-default: server forceert free + schema-default free; onboarding stuurt geen subscriptionType mee
+- [x] Hernoeming: 'AI Huismeester' -> 'Mati — Jouw digitale woonvriend' (nav, dashboard, chat, persona, Register, Privacy, AV)
+- [x] Tests toegevoegd: isPassportValidated + canUseValidatedFeatures (5 nieuwe, 116 totaal groen)
+- [x] Build geverifieerd (tsc foutloos, 116 tests groen); checkpoint + rapportage

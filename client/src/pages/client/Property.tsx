@@ -104,6 +104,10 @@ export default function ClientProperty() {
 
   const openRequests = myRequests.filter((r) => r.status === "open");
 
+  // Optie A: while a self-created property awaits Comfortabel validation, the
+  // value features (score, reports, Mati) are locked for the client.
+  const awaitingValidation = property?.status === "wacht_op_validatie";
+
   if (!property) {
     return (
       <ClientLayout title="Woning" backHref="/mijn">
@@ -133,6 +137,20 @@ export default function ClientProperty() {
         </div>
       )}
 
+      {/* Optie A: awaiting-validation banner */}
+      {awaitingValidation && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <Clock className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-emerald-800 text-sm">In behandeling — wacht op validatie</p>
+            <p className="text-xs text-emerald-700 mt-0.5">
+              U kunt uw dossier alvast aanvullen. Comfortabel valideert uw woning (0-meting); daarna
+              worden uw Woning Score™, rapporten en Mati vrijgegeven.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Subscription badge */}
       <div className="flex items-center justify-between mb-4">
         <span
@@ -146,13 +164,23 @@ export default function ClientProperty() {
           {SUBSCRIPTION_PRICES[tier] > 0 ? ` • €${SUBSCRIPTION_PRICES[tier]}/mnd` : " • Gratis"}
         </span>
         <div className="flex items-center gap-2">
-        <a
-          href={`/mijn/woning/${propertyId}/huismeester`}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E3A5F]/10 text-[#1E3A5F] hover:bg-[#1E3A5F]/20 transition-colors"
-        >
-          <Bot className="w-3.5 h-3.5" />
-          AI Huismeester
-        </a>
+        {awaitingValidation ? (
+          <span
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-100 text-slate-400 cursor-not-allowed"
+            title="Mati is beschikbaar na validatie"
+          >
+            <Lock className="w-3.5 h-3.5" />
+            Mati
+          </span>
+        ) : (
+          <a
+            href={`/mijn/woning/${propertyId}/huismeester`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-[#1E3A5F]/10 text-[#1E3A5F] hover:bg-[#1E3A5F]/20 transition-colors"
+          >
+            <Bot className="w-3.5 h-3.5" />
+            Mati
+          </a>
+        )}
         <a
           href="/abonnementen"
           className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
@@ -173,7 +201,7 @@ export default function ClientProperty() {
                 Inspectie: {new Date(latestInspection.inspectionDate).toLocaleDateString("nl-NL")}
               </span>
             )}
-            {features.jaarlijksRapport && (
+            {features.jaarlijksRapport && !awaitingValidation && (
               <button
                 onClick={downloadReport}
                 className="flex items-center gap-1.5 text-xs text-[#1E3A5F] border border-[#1E3A5F]/20 px-3 py-1.5 rounded-lg hover:bg-[#1E3A5F]/5 transition-colors"
@@ -184,7 +212,16 @@ export default function ClientProperty() {
             )}
           </div>
         </div>
-        {features.comfortabelScore ? (
+        {awaitingValidation ? (
+          <div className="flex flex-col items-center py-6">
+            <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-3">
+              <Clock className="w-7 h-7 text-emerald-400" />
+            </div>
+            <p className="text-sm text-slate-500 text-center max-w-xs">
+              Uw Woning Score™ wordt bepaald na de validatie/0-meting door Comfortabel.
+            </p>
+          </div>
+        ) : features.comfortabelScore ? (
           <WoningScore
             grade={latestInspection?.woningGrade as any}
             totalScore={latestInspection?.totalScore}

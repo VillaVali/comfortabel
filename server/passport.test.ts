@@ -13,6 +13,8 @@ import {
   FIELD_CATEGORY,
   isValidDutchPostalCode,
   normalizeDutchPostalCode,
+  isPassportValidated,
+  canUseValidatedFeatures,
   type CanonicalCandidate,
 } from "./lib/passport";
 
@@ -363,5 +365,44 @@ describe("normalizeDutchPostalCode", () => {
   it("returns cleaned input for partial/invalid codes without crashing", () => {
     expect(normalizeDutchPostalCode("123")).toBe("123");
     expect(normalizeDutchPostalCode("")).toBe("");
+  });
+});
+
+// ── Optie A: validation gate (self-created property awaits validation) ────────
+
+describe("isPassportValidated", () => {
+  it("treats a property awaiting validation as NOT validated", () => {
+    expect(isPassportValidated("wacht_op_validatie")).toBe(false);
+  });
+
+  it("treats every other status as validated/usable", () => {
+    for (const status of ["concept", "ingevuld", "gevalideerd", "aandacht", null, undefined]) {
+      expect(isPassportValidated(status as any)).toBe(true);
+    }
+  });
+});
+
+describe("canUseValidatedFeatures", () => {
+  it("locks value features for a client while awaiting validation", () => {
+    expect(
+      canUseValidatedFeatures({ accountRole: "user", propertyStatus: "wacht_op_validatie" })
+    ).toBe(false);
+  });
+
+  it("unlocks value features for a client once the property is no longer awaiting validation", () => {
+    expect(
+      canUseValidatedFeatures({ accountRole: "user", propertyStatus: "gevalideerd" })
+    ).toBe(true);
+    expect(
+      canUseValidatedFeatures({ accountRole: "user", propertyStatus: "concept" })
+    ).toBe(true);
+  });
+
+  it("always allows staff to use features, even while awaiting validation (support access)", () => {
+    for (const role of ["admin", "manager", "comfortabel_employee"] as const) {
+      expect(
+        canUseValidatedFeatures({ accountRole: role, propertyStatus: "wacht_op_validatie" })
+      ).toBe(true);
+    }
   });
 });

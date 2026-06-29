@@ -123,7 +123,7 @@ export default function ClientLayout({
           }`}
         >
           <Bot className={`w-5 h-5 mb-1 ${location.includes("/huismeester") ? "text-[#C9A84C]" : ""}`} />
-          Huismeester
+          Mati
         </a>
         <a
           href="/mijn/profiel"

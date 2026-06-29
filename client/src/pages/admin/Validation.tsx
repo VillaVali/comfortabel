@@ -4,7 +4,7 @@ import { trpc } from "../../lib/trpc";
 import { useAuth } from "../../hooks/useAuth";
 import { toast } from "sonner";
 import {
-  ShieldCheck, Clock, Check, X, FileEdit, Loader2, Home, User, AlertTriangle,
+  ShieldCheck, Clock, Check, X, FileEdit, Loader2, Home, User, AlertTriangle, BadgeCheck,
 } from "lucide-react";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -33,12 +33,79 @@ function ValidationSections() {
   const { isManager } = useAuth();
   return (
     <div className="space-y-8 max-w-5xl">
+      <PendingValidationSection />
       <ClaimsSection />
       <ChangeRequestsSection />
       {/* Role management is restricted to managers/admins, mirroring the
           server-side managerProcedure on users.setRole. */}
       {isManager && <RolesSection />}
     </div>
+  );
+}
+
+// ── New properties awaiting validation (Optie A) ────────────────────────────
+
+function PendingValidationSection() {
+  const utils = trpc.useUtils();
+  const { data: items = [], isLoading } = trpc.passport.listPendingValidation.useQuery();
+
+  const validate = trpc.passport.validateProperty.useMutation({
+    onSuccess: () => {
+      toast.success("Woning gevalideerd — score, rapporten en Mati zijn nu vrijgegeven.");
+      utils.passport.listPendingValidation.invalidate();
+    },
+    onError: (e) => toast.error(e.message || "Valideren mislukt"),
+  });
+
+  return (
+    <section className="bg-white rounded-2xl border border-slate-200 p-6">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 bg-emerald-100 rounded-lg flex items-center justify-center">
+          <BadgeCheck className="w-5 h-5 text-emerald-600" />
+        </div>
+        <h2 className="text-lg font-semibold text-slate-800">Nieuwe woningen — wacht op validatie</h2>
+        {items.length > 0 && (
+          <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+            {items.length}
+          </span>
+        )}
+      </div>
+      <p className="text-sm text-slate-500 mb-5">
+        Door klanten zelf aangemaakte woningen. De eigenaar kan het dossier alvast invullen, maar
+        Woning Score™, rapporten en Mati blijven vergrendeld tot u valideert (na 0-meting/controle).
+      </p>
+
+      {isLoading ? (
+        <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+      ) : items.length === 0 ? (
+        <p className="text-sm text-slate-400 py-4 text-center">Geen woningen die op validatie wachten.</p>
+      ) : (
+        <div className="space-y-3">
+          {items.map((p) => (
+            <div key={p.propertyId} className="flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-xl">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <Home className="w-4 h-4 text-slate-400" />
+                  {p.street} {p.houseNumber}, {p.postalCode} {p.city}
+                </p>
+                <p className="text-xs text-slate-500 flex items-center gap-2 mt-1">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  {p.ownerName || "Onbekend"} {p.ownerEmail ? <span className="text-slate-400">({p.ownerEmail})</span> : null}
+                  {p.propertyType ? <span className="text-slate-400">· {p.propertyType}</span> : null}
+                </p>
+              </div>
+              <button
+                onClick={() => validate.mutate({ propertyId: p.propertyId })}
+                disabled={validate.isPending}
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg flex items-center gap-1.5 transition active:scale-[0.97] disabled:opacity-60"
+              >
+                <BadgeCheck className="w-4 h-4" /> Valideren &amp; vrijgeven
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -14,7 +14,7 @@ import { verifySessionToken, COOKIE_NAME } from "./context";
 import { users } from "../drizzle/schema";
 import { PLAN_FEATURES, type SubscriptionTier } from "../shared/const";
 import { canUserAccessProperty } from "./lib/membership";
-import type { AccountRole } from "./lib/passport";
+import { canUseValidatedFeatures, type AccountRole } from "./lib/passport";
 
 export const chatRouter = Router();
 
@@ -238,6 +238,16 @@ chatRouter.post("/:propertyId", async (req, res) => {
       return;
     }
 
+    // Validation gate (Optie A): Mati is locked until Comfortabel validates the
+    // property. Staff bypass this for support.
+    if (!canUseValidatedFeatures({ accountRole: user.role as AccountRole, propertyStatus: prop.status })) {
+      res.status(403).json({
+        error: "Mati is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting). U ontvangt bericht zodra dit klaar is.",
+        awaitingValidation: true,
+      });
+      return;
+    }
+
     // Check AI feature access
     const features = PLAN_FEATURES[prop.subscriptionType as SubscriptionTier];
     const hasAI = features?.aiHuismeesterBeperkt || features?.aiHuismeesterUitgebreid;
@@ -321,7 +331,7 @@ chatRouter.post("/:propertyId", async (req, res) => {
     // Build context
     const propertyContext = await buildPropertyContext(propertyId);
 
-    const systemPrompt = `Je bent de AI Huismeester van MijnComfortabel™ — een vriendelijke, deskundige en praktische assistent voor woningbeheer en onderhoud.
+    const systemPrompt = `Je bent Mati, de digitale woonvriend van MijnComfortabel™ — een vriendelijke, deskundige en praktische assistent voor woningbeheer en onderhoud. Stel je indien relevant voor als "Mati".
 
 Je helpt de eigenaar van de woning met vragen over onderhoud, verduurzaming, kosten, planning, technische kenmerken en meer.
 

@@ -64,7 +64,7 @@ export default function AIHuismeester() {
             {
               id: "welcome",
               role: "assistant",
-              content: `Goedendag! Ik ben uw AI Huismeester voor **${property.street} ${property.houseNumber}**.\n\nIk heb toegang tot het volledige woningpaspoort en kan u helpen met vragen over onderhoud, verduurzaming, technische kenmerken, subsidies en meer.\n\nWaar kan ik u mee helpen?`,
+              content: `Goedendag! Ik ben Mati, uw digitale woonvriend voor **${property.street} ${property.houseNumber}**.\n\nIk heb toegang tot het volledige woningpaspoort en kan u helpen met vragen over onderhoud, verduurzaming, technische kenmerken, subsidies en meer.\n\nWaar kan ik u mee helpen?`,
               timestamp: new Date(),
             },
           ]);
@@ -80,7 +80,7 @@ export default function AIHuismeester() {
             {
               id: "welcome",
               role: "assistant",
-              content: `Goedendag! Ik ben uw AI Huismeester voor **${property.street} ${property.houseNumber}**.\n\nWaar kan ik u mee helpen?`,
+              content: `Goedendag! Ik ben Mati, uw digitale woonvriend voor **${property.street} ${property.houseNumber}**.\n\nWaar kan ik u mee helpen?`,
               timestamp: new Date(),
             },
           ]);
@@ -208,7 +208,7 @@ export default function AIHuismeester() {
 
   if (!property || !historyLoaded) {
     return (
-      <ClientLayout title="AI Huismeester">
+      <ClientLayout title="Mati">
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-[#1E3A5F]" />
         </div>
@@ -218,14 +218,14 @@ export default function AIHuismeester() {
 
   if (!hasAI) {
     return (
-      <ClientLayout title="AI Huismeester">
+      <ClientLayout title="Mati">
         <div className="max-w-md mx-auto py-12 text-center">
           <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center mx-auto mb-4">
             <Bot className="w-10 h-10 text-amber-500" />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">AI Huismeester</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Mati</h2>
           <p className="text-slate-500 text-sm mb-6 leading-relaxed">
-            De AI Huismeester is beschikbaar vanaf het <strong>Digital</strong>-pakket. Upgrade uw abonnement om direct antwoord te krijgen op al uw woningvragen.
+            Mati, jouw digitale woonvriend, is beschikbaar vanaf het <strong>Digital</strong>-pakket. Upgrade uw abonnement om direct antwoord te krijgen op al uw woningvragen.
           </p>
           <Link
             href="/abonnementen"
@@ -242,7 +242,7 @@ export default function AIHuismeester() {
   const remainingQuestions = monthlyLimit !== null ? Math.max(0, monthlyLimit - monthlyUsage) : null;
 
   return (
-    <ClientLayout title="AI Huismeester">
+    <ClientLayout title="Mati">
       <div className="flex flex-col h-[calc(100vh-120px)] max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100">
@@ -253,7 +253,8 @@ export default function AIHuismeester() {
             <Bot className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="font-semibold text-slate-800 text-sm">AI Huismeester</h2>
+            <h2 className="font-semibold text-slate-800 text-sm">Mati</h2>
+            <p className="text-[11px] text-slate-400 -mt-0.5">Jouw digitale woonvriend</p>
             <p className="text-xs text-slate-400">
               {property.street} {property.houseNumber}
             </p>
@@ -372,7 +373,7 @@ export default function AIHuismeester() {
         <div className="border-t border-slate-100 pt-4">
           {isLimitReached ? (
             <div className="text-center text-xs text-slate-400">
-              Upgrade uw abonnement om door te gaan met de AI Huismeester.
+              Upgrade uw abonnement om door te gaan met Mati.
             </div>
           ) : (
             <>
@@ -406,7 +407,7 @@ export default function AIHuismeester() {
                 </button>
               </div>
               <p className="text-xs text-slate-400 text-center mt-2">
-                AI Huismeester heeft toegang tot uw volledige Woningpaspoort™
+                Mati heeft toegang tot uw volledige Woningpaspoort™
                 {isFreeTier && monthlyLimit !== null && remainingQuestions !== null && remainingQuestions > 0 && (
                   <span className="ml-1 text-amber-600">· {remainingQuestions} vra{remainingQuestions === 1 ? "ag" : "gen"} resterend deze maand</span>
                 )}

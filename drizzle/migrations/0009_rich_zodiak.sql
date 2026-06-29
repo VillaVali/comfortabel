@@ -1,0 +1,1 @@
+ALTER TABLE `properties` MODIFY COLUMN `status` enum('wacht_op_validatie','concept','ingevuld','gevalideerd','aandacht') NOT NULL DEFAULT 'concept';

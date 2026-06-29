@@ -1071,7 +1071,10 @@ const passportRouter = t.router({
         addressSource: role === "user" ? "customer" : "admin",
         createdByRole: createdByRole as any,
         createdByUserId: ctx.user.id,
-        status: "concept",
+        // Optie A: a property created by a client (non-staff) starts awaiting
+        // Comfortabel validation. Score/reports/Mati stay locked until staff
+        // validates it. Staff-created properties go straight to "concept".
+        status: role === "user" ? "wacht_op_validatie" : "concept",
         isActive: true,
       });
       const propertyId = Number((res[0] as any).insertId);
@@ -1221,6 +1224,63 @@ const passportRouter = t.router({
       .orderBy(desc(propertyMembers.createdAt));
     return rows;
   }),
+
+  /**
+   * Optie A — properties awaiting Comfortabel validation (self-created by a
+   * client). Distinct from claims: here the actor IS the owner, the property
+   * just needs a 0-meting/validation before value features unlock.
+   */
+  listPendingValidation: staffProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+    return db
+      .select({
+        propertyId: properties.id,
+        street: properties.street,
+        houseNumber: properties.houseNumber,
+        postalCode: properties.postalCode,
+        city: properties.city,
+        propertyType: properties.propertyType,
+        createdAt: properties.createdAt,
+        ownerName: users.name,
+        ownerEmail: users.email,
+      })
+      .from(properties)
+      .leftJoin(users, eq(users.id, properties.createdByUserId))
+      .where(and(eq(properties.status, "wacht_op_validatie"), eq(properties.isActive, true)))
+      .orderBy(desc(properties.createdAt));
+  }),
+
+  /**
+   * Validate (release) a property that was awaiting validation. Moves it out of
+   * "wacht_op_validatie" so Woning Score, reports and Mati unlock for the owner.
+   */
+  validateProperty: staffProcedure
+    .input(z.object({ propertyId: z.number() }))
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const before = await db
+        .select({ id: properties.id, status: properties.status })
+        .from(properties)
+        .where(eq(properties.id, input.propertyId))
+        .limit(1);
+      if (!before[0]) throw new TRPCError({ code: "NOT_FOUND" });
+      await db
+        .update(properties)
+        .set({ status: "gevalideerd" })
+        .where(eq(properties.id, input.propertyId));
+      await writeAudit(db, {
+        actorUserId: ctx.user.id,
+        action: "property.validate",
+        entityType: "property",
+        entityId: input.propertyId,
+        previousValue: { status: before[0].status },
+        newValue: { status: "gevalideerd" },
+        ipAddress: clientIp(ctx.req),
+      });
+      return { success: true };
+    }),
 
   /** Members of one property (admin role-management view). */
   listMembers: staffProcedure

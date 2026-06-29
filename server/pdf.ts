@@ -11,7 +11,7 @@ import {
 import { eq, desc, asc } from "drizzle-orm";
 import { createContext } from "./context";
 import { canUserAccessProperty } from "./lib/membership";
-import type { AccountRole } from "./lib/passport";
+import { canUseValidatedFeatures, type AccountRole } from "./lib/passport";
 
 export const pdfRouter = Router();
 
@@ -157,6 +157,11 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
 
     if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
       return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Validation gate (Optie A): reports are locked until Comfortabel validates.
+    if (!canUseValidatedFeatures({ accountRole: ctx.user.role as AccountRole, propertyStatus: property.status })) {
+      return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
     }
 
     const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
@@ -438,6 +443,11 @@ pdfRouter.get("/verduurzaming/:propertyId", async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
+    // Validation gate (Optie A): reports are locked until Comfortabel validates.
+    if (!canUseValidatedFeatures({ accountRole: ctx.user.role as AccountRole, propertyStatus: property.status })) {
+      return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
+    }
+
     const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
     const displayName = customer
       ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.companyName || "Eigenaar"
@@ -574,6 +584,11 @@ pdfRouter.get("/subsidies/:propertyId", async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
+    // Validation gate (Optie A): reports are locked until Comfortabel validates.
+    if (!canUseValidatedFeatures({ accountRole: ctx.user.role as AccountRole, propertyStatus: property.status })) {
+      return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
+    }
+
     const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
     const displayName = customer
       ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.companyName || "Eigenaar"
@@ -707,6 +722,11 @@ pdfRouter.get("/onderhoudsrapport/:propertyId", async (req, res) => {
 
     if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
       return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Validation gate (Optie A): reports are locked until Comfortabel validates.
+    if (!canUseValidatedFeatures({ accountRole: ctx.user.role as AccountRole, propertyStatus: property.status })) {
+      return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
     }
 
     const issueRows = await db.select().from(maintenanceIssues)
@@ -851,6 +871,11 @@ pdfRouter.get("/inspectierapport/:propertyId", async (req, res) => {
 
     if (!(await canUserAccessProperty(db, { id: ctx.user.id, role: ctx.user.role as AccountRole }, propertyId))) {
       return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // Validation gate (Optie A): reports are locked until Comfortabel validates.
+    if (!canUseValidatedFeatures({ accountRole: ctx.user.role as AccountRole, propertyStatus: property.status })) {
+      return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
     }
 
     const inspectionRows = await db.select().from(inspections)

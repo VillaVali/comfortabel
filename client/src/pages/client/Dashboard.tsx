@@ -53,7 +53,7 @@ export default function ClientDashboard() {
             </div>
             <h2 className="text-xl font-bold text-slate-800 mb-2">Voeg uw eerste woning toe</h2>
             <p className="text-slate-500 text-sm leading-relaxed">
-              Maak een Woningpaspoort™ aan en krijg direct toegang tot alle woninggegevens, gratis deeplinks en de AI Huismeester.
+              Maak een Woningpaspoort™ aan en krijg direct toegang tot alle woninggegevens, gratis deeplinks en Mati, jouw digitale woonvriend.
             </p>
           </div>
 

@@ -38,7 +38,7 @@ export default function AlgemeneVoorwaarden() {
                 <li><strong>Platform:</strong> het digitale woningbeheerplatform MijnComfortabel™, bereikbaar via mijncomfortabel.nl</li>
                 <li><strong>Gebruiker:</strong> de natuurlijke persoon of rechtspersoon die een account aanmaakt op het platform</li>
                 <li><strong>Abonnement:</strong> het door de gebruiker gekozen pakket (Free, Digital, Basis, Plus of Premium)</li>
-                <li><strong>AI Huismeester:</strong> de AI-gestuurde assistent binnen het platform die woningadvies geeft</li>
+                <li><strong>Mati:</strong> de AI-gestuurde digitale assistent (“digitale woonvriend”) binnen het platform die woningadvies geeft</li>
                 <li><strong>Woningpaspoort™:</strong> het digitale dossier van een woning binnen het platform</li>
               </ul>
             </section>
@@ -58,7 +58,7 @@ export default function AlgemeneVoorwaarden() {
               <ul className="list-disc list-inside space-y-1 text-gray-700 ml-2">
                 <li>Digitaal woningbeheer en Woningpaspoort™</li>
                 <li>Onderhoudsbeheer en meerjarenplanning</li>
-                <li>AI Huismeester voor woningadvies (afhankelijk van abonnement)</li>
+                <li>Mati (AI-assistent) voor woningadvies (afhankelijk van abonnement)</li>
                 <li>Genereren van PDF-rapporten over de woning</li>
                 <li>Verduurzamingsadvies en subsidie-informatie</li>
               </ul>
@@ -96,9 +96,9 @@ export default function AlgemeneVoorwaarden() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-3">Artikel 5 — AI Huismeester — Disclaimer</h2>
+              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-3">Artikel 5 — Mati (AI-assistent) — Disclaimer</h2>
               <p className="text-gray-700">
-                De AI Huismeester genereert adviezen op basis van de door de gebruiker ingevoerde woninggegevens en algemene kennis. De adviezen zijn informatief van aard en vormen <strong>geen</strong> professioneel bouwkundig, juridisch of financieel advies. Comfortabel is niet aansprakelijk voor schade die voortvloeit uit het handelen op basis van adviezen van de AI Huismeester.
+                Mati, de AI-assistent binnen het platform, genereert adviezen op basis van de door de gebruiker ingevoerde woninggegevens en algemene kennis. De adviezen zijn informatief van aard en vormen <strong>geen</strong> professioneel bouwkundig, juridisch of financieel advies. Comfortabel is niet aansprakelijk voor schade die voortvloeit uit het handelen op basis van adviezen van Mati.
               </p>
               <p className="text-gray-700 mt-2">
                 Voor ingrijpende beslissingen over uw woning raadt Comfortabel aan een gecertificeerde bouwkundige, energieadviseur of andere relevante professional te raadplegen.
@@ -120,7 +120,7 @@ export default function AlgemeneVoorwaarden() {
             <section>
               <h2 className="text-lg font-semibold text-[#1E3A5F] mb-3">Artikel 7 — Intellectueel eigendom</h2>
               <p className="text-gray-700">
-                Alle rechten van intellectueel eigendom met betrekking tot het platform, inclusief de namen MijnComfortabel™, Woningpaspoort™, Woning Score™ en AI Huismeester, berusten bij Comfortabel. Het is gebruikers niet toegestaan deze te gebruiken zonder voorafgaande schriftelijke toestemming.
+                Alle rechten van intellectueel eigendom met betrekking tot het platform, inclusief de namen MijnComfortabel™, Woningpaspoort™, Woning Score™ en Mati, berusten bij Comfortabel. Het is gebruikers niet toegestaan deze te gebruiken zonder voorafgaande schriftelijke toestemming.
               </p>
             </section>
 
