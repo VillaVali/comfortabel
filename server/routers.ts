@@ -22,7 +22,7 @@ import {
 } from "../drizzle/schema";
 import { sendInvitationEmail } from "./email";
 import { notifyOwner } from "./_core/notification";
-import { eq, desc, and, asc } from "drizzle-orm";
+import { eq, desc, and, asc, inArray } from "drizzle-orm";
 import {
   normalizeAddressKey,
   canMutateField,
@@ -198,17 +198,42 @@ const propertiesRouter = t.router({
   myProperties: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-    // Find customer linked to this user
+
+    // New model: properties via propertyMembers (active + pending = visible to owner)
+    const memberRows = await db
+      .select({ propertyId: propertyMembers.propertyId })
+      .from(propertyMembers)
+      .where(
+        and(
+          eq(propertyMembers.userId, ctx.user.id),
+          inArray(propertyMembers.status, ["active", "pending"])
+        )
+      );
+    const memberPropertyIds = memberRows.map((r) => r.propertyId);
+
+    // Legacy model: properties via customers.userId -> properties.customerId
     const cust = await db
-      .select()
+      .select({ id: customers.id })
       .from(customers)
       .where(eq(customers.userId, ctx.user.id))
       .limit(1);
-    if (!cust[0]) return [];
+    const legacyPropertyIds: number[] = [];
+    if (cust[0]) {
+      const legacyRows = await db
+        .select({ id: properties.id })
+        .from(properties)
+        .where(eq(properties.customerId, cust[0].id));
+      legacyRows.forEach((r) => legacyPropertyIds.push(r.id));
+    }
+
+    // Merge and deduplicate
+    const allIds = Array.from(new Set([...memberPropertyIds, ...legacyPropertyIds]));
+    if (allIds.length === 0) return [];
+
     return db
       .select()
       .from(properties)
-      .where(eq(properties.customerId, cust[0].id))
+      .where(inArray(properties.id, allIds))
       .orderBy(desc(properties.createdAt));
   }),
 

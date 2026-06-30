@@ -394,3 +394,7 @@
 - [x] completeOnboarding procedure + aanroep in Onboarding.tsx (onboardingCompletedAt gezet bij afronden)
 - [x] notification.ts module aangemaakt in server/_core
 - [x] 116 tests groen, TypeScript foutloos
+
+## Post-launch taken (na livegang 1 juli)
+
+- [ ] Onboarding-status tonen in admin-gebruikersoverzicht — badge/kolom die aangeeft of een gebruiker de onboarding heeft afgerond (trigger: zodra handmatig bijhouden lastig wordt, ~20+ gebruikers)
