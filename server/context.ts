@@ -60,6 +60,8 @@ export async function createContext({
               email: users.email,
               role: users.role,
               isActive: users.isActive,
+              onboardingCompletedAt: users.onboardingCompletedAt,
+              isFoundingMember: users.isFoundingMember,
               createdAt: users.createdAt,
               updatedAt: users.updatedAt,
               lastSignedIn: users.lastSignedIn,
