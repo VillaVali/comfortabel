@@ -35,6 +35,7 @@ import {
 } from "./lib/passport";
 import { canUserAccessProperty, getMembership, assertPropertyAccess } from "./lib/membership";
 import { writeAudit, clientIp } from "./lib/audit";
+import { syncNewProperty, syncPropertyDataPoints } from "./lib/datapoints";
 
 const t = initTRPC.context<TrpcContext>().create({ transformer: superjson });
 
@@ -377,6 +378,15 @@ const propertiesRouter = t.router({
       // Audit each changed field (especially protected A/B fields).
       const before = await db.select().from(properties).where(eq(properties.id, id)).limit(1);
       await db.update(properties).set(data).where(eq(properties.id, id));
+      // Trojan Horse: sync changed fields as data points (fire-and-forget)
+      const isStaff = role === "admin" || role === "manager" || role === "comfortabel_employee";
+      syncPropertyDataPoints(
+        id,
+        data as Record<string, unknown>,
+        ctx.user.id,
+        isStaff ? "comfortabel" : "klant",
+        isStaff ? 80 : 50,
+      ).catch(() => {/* silent */});
       for (const field of Object.keys(data)) {
         await writeAudit(db, {
           actorUserId: ctx.user.id,
@@ -1099,6 +1109,18 @@ const passportRouter = t.router({
         newValue: { normalizedAddressKey: key, role: "owner" },
         ipAddress: ip,
       });
+      // Trojan Horse: sync all initial property fields as data points (fire-and-forget)
+      syncNewProperty(propertyId, {
+        street: input.street,
+        houseNumber: input.houseNumber,
+        postalCode: input.postalCode,
+        city: input.city,
+        propertyType: input.propertyType ?? "tussenwoning",
+        buildYear: input.buildYear,
+        surfaceM2: input.surfaceM2,
+        residents: input.residents,
+      }, ctx.user.id).catch(() => {/* silent */});
+
       // Idempotently ensure the owner has a personal Eigen Huis Dossier shell.
       // Covers accounts created before registration auto-created one (e.g. OAuth).
       try {

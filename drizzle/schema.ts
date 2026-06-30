@@ -496,3 +496,68 @@ export const zeroMeasurementRequests = mysqlTable("zeroMeasurementRequests", {
 
 export type ZeroMeasurementRequest = typeof zeroMeasurementRequests.$inferSelect;
 export type InsertZeroMeasurementRequest = typeof zeroMeasurementRequests.$inferInsert;
+
+// ─── Property Data Points (Trojan Horse — centraal datapunt-model) ────────────
+// Every piece of property data is stored as an individual data point.
+// The existing `properties` columns remain the source of truth for v1.0;
+// this table is populated in parallel (sync-on-write) so that Fase 2 can
+// migrate the UI to a pure datapunt-renderer without a data migration.
+//
+// Categories map to WoningPaspoort blokken:
+//   identiteit | waarde_financieel | juridisch_omgeving | technisch | verduurzaming
+//   dossier | inspectie | onderhoud | ai_analyse
+//
+// Sources reflect the intake channel:
+//   klant | telefoon_intake | ai | foto | comfortabel | specialist | bag | import
+//
+// Confidence: 0–100 integer (0=onbekend, 50=klant-opgave, 80=foto-analyse, 100=fysiek-geverifieerd)
+export const propertyDataPoints = mysqlTable("propertyDataPoints", {
+  id: int("id").autoincrement().primaryKey(),
+  propertyId: int("propertyId").notNull().references(() => properties.id),
+
+  // ── Classificatie ────────────────────────────────────────────────────────
+  category: varchar("category", { length: 64 }).notNull(),   // e.g. "technisch"
+  component: varchar("component", { length: 100 }).notNull(), // e.g. "heatingSystem"
+  label: varchar("label", { length: 200 }),                  // human-readable label
+
+  // ── Waarde ───────────────────────────────────────────────────────────────
+  // Stored as text to support any type (enum value, number, boolean, JSON).
+  // Consumers cast to the appropriate type based on component.
+  value: text("value"),
+  unit: varchar("unit", { length: 30 }),                     // e.g. "m2", "€", "jaar"
+
+  // ── Herkomst & betrouwbaarheid ────────────────────────────────────────────
+  source: mysqlEnum("source", [
+    "klant", "telefoon_intake", "ai", "foto", "comfortabel", "specialist", "bag", "import"
+  ]).default("klant").notNull(),
+  confidence: int("confidence").default(50).notNull(),        // 0–100
+  verificationStatus: mysqlEnum("verificationStatus", [
+    "unverified", "self_reported", "photo_verified", "physically_verified", "ai_inferred"
+  ]).default("self_reported").notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  verifiedBy: int("verifiedBy").references(() => users.id),
+
+  // ── Gekoppelde media ──────────────────────────────────────────────────────
+  // JSON arrays of document/photo IDs or URLs
+  linkedPhotoIds: text("linkedPhotoIds"),    // JSON: number[]
+  linkedDocumentIds: text("linkedDocumentIds"), // JSON: number[]
+
+  // ── Onderhoud & risico ────────────────────────────────────────────────────
+  maintenanceStatus: mysqlEnum("maintenanceStatus", [
+    "goed", "aandacht", "urgent", "onbekend"
+  ]).default("onbekend"),
+  riskScore: int("riskScore"),   // 0–100, null = not assessed
+  urgencyScore: int("urgencyScore"), // 0–100, null = not assessed
+
+  // ── AI-annotaties (Fase 2+) ───────────────────────────────────────────────
+  aiNotes: text("aiNotes"),      // Mati's observations about this data point
+  aiFlags: text("aiFlags"),      // JSON: { missing: bool, inconsistent: bool, followUpQuestion: string }
+
+  // ── Metadata ─────────────────────────────────────────────────────────────
+  createdBy: int("createdBy").references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type PropertyDataPoint = typeof propertyDataPoints.$inferSelect;
+export type InsertPropertyDataPoint = typeof propertyDataPoints.$inferInsert;
