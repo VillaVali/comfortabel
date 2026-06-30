@@ -179,8 +179,8 @@ const propertiesRouter = t.router({
     .query(async ({ input, ctx }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
-      // Verify customer access
-      if (ctx.user.role !== "admin") {
+      // Verify customer access (admin always allowed)
+      if (ctx.user.role !== "admin" && ctx.user.role !== "manager" && ctx.user.role !== "comfortabel_employee") {
         const cust = await db
           .select()
           .from(customers)
@@ -188,10 +188,35 @@ const propertiesRouter = t.router({
           .limit(1);
         if (!cust[0]) throw new TRPCError({ code: "FORBIDDEN" });
       }
+      // Dual-model: collect property IDs from both models.
+      const ids = new Set<number>();
+      // Legacy model: properties.customerId
+      const legacyProps = await db
+        .select({ id: properties.id })
+        .from(properties)
+        .where(eq(properties.customerId, input.customerId));
+      legacyProps.forEach((p) => ids.add(p.id));
+      // New model: propertyMembers via customer.userId
+      const custRow = await db
+        .select({ userId: customers.userId })
+        .from(customers)
+        .where(eq(customers.id, input.customerId))
+        .limit(1);
+      if (custRow[0]?.userId) {
+        const memberProps = await db
+          .select({ propertyId: propertyMembers.propertyId })
+          .from(propertyMembers)
+          .where(and(
+            eq(propertyMembers.userId, custRow[0].userId),
+            eq(propertyMembers.status, "active"),
+          ));
+        memberProps.forEach((m) => ids.add(m.propertyId));
+      }
+      if (ids.size === 0) return [];
       return db
         .select()
         .from(properties)
-        .where(eq(properties.customerId, input.customerId))
+        .where(inArray(properties.id, Array.from(ids)))
         .orderBy(desc(properties.createdAt));
     }),
 

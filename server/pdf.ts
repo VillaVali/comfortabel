@@ -7,8 +7,41 @@ import {
   inspectionItems,
   maintenanceIssues,
   maintenancePlanning,
+  propertyMembers,
+  users,
 } from "../drizzle/schema";
-import { eq, desc, asc } from "drizzle-orm";
+import { eq, desc, asc, and, inArray } from "drizzle-orm";
+
+/** Dual-model owner name: propertyMembers (new) → customers (legacy) → fallback */
+async function resolveOwnerName(
+  db: NonNullable<Awaited<ReturnType<typeof import('./db').getDb>>>,
+  propertyId: number,
+  customerId: number | null,
+): Promise<string> {
+  // New model: find active owner/business_manager member → user name
+  const ownerMember = await db
+    .select({ userId: propertyMembers.userId })
+    .from(propertyMembers)
+    .where(and(
+      eq(propertyMembers.propertyId, propertyId),
+      inArray(propertyMembers.role, ["owner", "business_manager"]),
+      eq(propertyMembers.status, "active"),
+    ))
+    .limit(1);
+  if (ownerMember[0]) {
+    const [u] = await db.select({ name: users.name }).from(users).where(eq(users.id, ownerMember[0].userId)).limit(1);
+    if (u?.name) return u.name;
+  }
+  // Legacy model: customers table via customerId
+  if (customerId != null) {
+    const [c] = await db.select({ firstName: customers.firstName, lastName: customers.lastName, companyName: customers.companyName, type: customers.type }).from(customers).where(eq(customers.id, customerId)).limit(1);
+    if (c) {
+      if (c.type === "bedrijf" || c.type === "vastgoed") return c.companyName || "Eigenaar";
+      return `${c.firstName || ""} ${c.lastName || ""}`.trim() || "Eigenaar";
+    }
+  }
+  return "Eigenaar";
+}
 import { createContext } from "./context";
 import { canUserAccessProperty } from "./lib/membership";
 import { canUseValidatedFeatures, type AccountRole } from "./lib/passport";
@@ -164,18 +197,12 @@ pdfRouter.get("/woningpaspoort/:propertyId", async (req, res) => {
       return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
     }
 
-    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
+    const displayName = await resolveOwnerName(db, propertyId, property.customerId ?? null);
     const allInspections = await db.select().from(inspections).where(eq(inspections.propertyId, propertyId)).orderBy(desc(inspections.inspectionDate));
     const latestInspection = allInspections.find(i => i.status === "afgerond");
     const issues = await db.select().from(maintenanceIssues).where(eq(maintenanceIssues.propertyId, propertyId));
     const planning = await db.select().from(maintenancePlanning).where(eq(maintenancePlanning.propertyId, propertyId)).orderBy(asc(maintenancePlanning.plannedYear));
     const openIssues = issues.filter(i => i.status !== "afgerond");
-
-    const displayName = customer
-      ? (customer.type === "bedrijf" || customer.type === "vastgoed")
-        ? customer.companyName || ""
-        : `${customer.firstName || ""} ${customer.lastName || ""}`.trim()
-      : "Onbekend";
 
     const ownershipLabels: Record<string, string> = {
       volle_eigendom: "Volle eigendom", erfpacht: "Erfpacht", appartementsrecht: "Appartementsrecht",
@@ -448,10 +475,7 @@ pdfRouter.get("/verduurzaming/:propertyId", async (req, res) => {
       return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
     }
 
-    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
-    const displayName = customer
-      ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.companyName || "Eigenaar"
-      : "Eigenaar";
+    const displayName = await resolveOwnerName(db, propertyId, property.customerId ?? null);
 
     // Build property context for LLM
     const propertyContext = `
@@ -589,10 +613,7 @@ pdfRouter.get("/subsidies/:propertyId", async (req, res) => {
       return res.status(403).json({ error: "Dit rapport is beschikbaar zodra Comfortabel uw woning heeft gevalideerd (0-meting).", awaitingValidation: true });
     }
 
-    const [customer] = await db.select().from(customers).where(eq(customers.id, property.customerId ?? -1)).limit(1);
-    const displayName = customer
-      ? `${customer.firstName || ""} ${customer.lastName || ""}`.trim() || customer.companyName || "Eigenaar"
-      : "Eigenaar";
+    const displayName = await resolveOwnerName(db, propertyId, property.customerId ?? null);
 
     const propertyContext = `
 Woning: ${property.street} ${property.houseNumber}, ${property.postalCode} ${property.city}
