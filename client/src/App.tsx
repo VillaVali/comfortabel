@@ -25,6 +25,8 @@ import AIHuismeester from "./pages/client/AIHuismeester";
 import ClientProfile from "./pages/client/Profile";
 import Privacy from "./pages/Privacy";
 import AlgemeneVoorwaarden from "./pages/AlgemeneVoorwaarden";
+import Founding100 from "./pages/Founding100";
+import Founding100Thanks from "./pages/Founding100Thanks";
 
 export default function App() {
   return (
@@ -41,6 +43,8 @@ export default function App() {
         <Route path="/welkom" component={Onboarding} />
         <Route path="/privacy" component={Privacy} />
         <Route path="/algemene-voorwaarden" component={AlgemeneVoorwaarden} />
+        <Route path="/founding-100/bedankt" component={Founding100Thanks} />
+        <Route path="/founding-100" component={Founding100} />
         {/* Admin routes */}
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/customers" component={AdminCustomers} />
@@ -56,7 +60,10 @@ export default function App() {
         <Route path="/mijn/profiel" component={ClientProfile} />
         <Route path="/mijn/onboarding" component={ClientOnboarding} />
         <Route path="/mijn/woning/:id" component={ClientProperty} />
-        <Route path="/mijn/woning/:propertyId/huismeester" component={AIHuismeester} />
+        <Route
+          path="/mijn/woning/:propertyId/huismeester"
+          component={AIHuismeester}
+        />
         {/* Fallback */}
         <Route component={NotFound} />
       </Switch>
