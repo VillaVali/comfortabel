@@ -158,7 +158,7 @@ authRouter.post("/register", async (req, res) => {
 
     // Send welcome email to new user
     const origin = req.headers.origin || `${req.protocol}://${req.headers.host}`;
-    const loginUrl = `${origin}/inloggen`;
+    const loginUrl = `${origin}/login`;
     sendWelcomeEmail({ to: email.toLowerCase().trim(), name: name.trim(), loginUrl }).catch((err) =>
       console.error(`[Auth] Welcome email failed for ${email}:`, err)
     );

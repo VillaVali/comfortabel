@@ -4,9 +4,13 @@ import { getDb } from "./db";
 import { users } from "../drizzle/schema";
 import { eq } from "drizzle-orm";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "mijncomfortabel-secret-key-2025"
-);
+export function getJwtSecret(): Uint8Array {
+  const value = process.env.JWT_SECRET;
+  if (!value) {
+    throw new Error("JWT_SECRET is not configured");
+  }
+  return new TextEncoder().encode(value);
+}
 
 export const COOKIE_NAME = "mc_session";
 
@@ -27,9 +31,11 @@ export type TrpcContext = {
   user: SessionUser | null;
 };
 
-export async function verifySessionToken(token: string): Promise<{ userId: number } | null> {
+export async function verifySessionToken(
+  token: string
+): Promise<{ userId: number } | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload.sub) return null;
     return { userId: Number(payload.sub) };
   } catch {
@@ -87,5 +93,5 @@ export async function createSessionToken(userId: number): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+    .sign(getJwtSecret());
 }

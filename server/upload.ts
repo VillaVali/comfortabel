@@ -3,23 +3,20 @@ import multer from "multer";
 import { getDb } from "./db";
 import { documents } from "../drizzle/schema";
 import { jwtVerify } from "jose";
-import { COOKIE_NAME } from "./context";
+import { COOKIE_NAME, getJwtSecret } from "./context";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB
 
 const FORGE_URL = process.env.BUILT_IN_FORGE_API_URL!;
 const FORGE_KEY = process.env.BUILT_IN_FORGE_API_KEY!;
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "mijncomfortabel-secret-key-2025"
-);
 
 // Middleware: require admin
 async function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   const token = req.cookies?.[COOKIE_NAME];
   if (!token) { res.status(401).json({ error: "Niet ingelogd" }); return; }
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload.sub) { res.status(401).json({ error: "Ongeldige sessie" }); return; }
     // Fetch user role from DB
     const db = await getDb();
@@ -39,7 +36,7 @@ async function requireUser(req: express.Request, res: express.Response, next: ex
   const token = req.cookies?.[COOKIE_NAME];
   if (!token) { res.status(401).json({ error: "Niet ingelogd" }); return; }
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload.sub) { res.status(401).json({ error: "Ongeldige sessie" }); return; }
     const db = await getDb();
     if (!db) { res.status(500).json({ error: "Database niet beschikbaar" }); return; }

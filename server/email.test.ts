@@ -7,13 +7,22 @@ vi.mock("resend", () => {
   return {
     Resend: vi.fn().mockImplementation(() => ({
       emails: {
-        send: vi.fn().mockResolvedValue({ data: { id: "test-id" }, error: null }),
+        send: vi
+          .fn()
+          .mockResolvedValue({ data: { id: "test-id" }, error: null }),
       },
     })),
   };
 });
 
-import { sendEmail, sendPasswordResetEmail, sendInvitationEmail, sendReportReadyEmail } from "./email";
+import {
+  sendEmail,
+  sendPasswordResetEmail,
+  sendInvitationEmail,
+  sendReportReadyEmail,
+  sendFounding100ConfirmationEmail,
+  sendFounding100InternalNotificationEmail,
+} from "./email";
 
 describe("sendEmail", () => {
   it("returns success: true on successful send", async () => {
@@ -32,7 +41,8 @@ describe("sendPasswordResetEmail", () => {
     const result = await sendPasswordResetEmail({
       to: "user@example.com",
       name: "Jan",
-      resetUrl: "https://mijncomfort-a8mtknzo.manus.space/wachtwoord-reset?token=abc123",
+      resetUrl:
+        "https://mijncomfort-a8mtknzo.manus.space/wachtwoord-reset?token=abc123",
     });
     expect(result.success).toBe(true);
   });
@@ -58,9 +68,35 @@ describe("sendReportReadyEmail", () => {
       name: "Piet",
       reportType: "Woningpaspoort™",
       propertyAddress: "Dorpsstraat 5, Utrecht",
-      downloadUrl: "https://mijncomfort-a8mtknzo.manus.space/api/pdf/woningpaspoort/1",
+      downloadUrl:
+        "https://mijncomfort-a8mtknzo.manus.space/api/pdf/woningpaspoort/1",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("Founding 100 emails", () => {
+  it("sends the applicant confirmation", async () => {
+    await expect(
+      sendFounding100ConfirmationEmail({
+        to: "noor@example.com",
+        name: "Noor",
+      })
+    ).resolves.toMatchObject({ success: true });
+  });
+
+  it("sends the internal notification", async () => {
+    await expect(
+      sendFounding100InternalNotificationEmail({
+        to: "info@comfortabel.org",
+        lead: {
+          name: "Noor",
+          email: "noor@example.com",
+          postalCode: "1234AB",
+          submittedAt: "30-07-2026 10:00",
+        },
+      })
+    ).resolves.toMatchObject({ success: true });
   });
 });
 
