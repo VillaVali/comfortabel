@@ -561,3 +561,40 @@ export const propertyDataPoints = mysqlTable("propertyDataPoints", {
 
 export type PropertyDataPoint = typeof propertyDataPoints.$inferSelect;
 export type InsertPropertyDataPoint = typeof propertyDataPoints.$inferInsert;
+
+// ─── Founding 100 Leads ──────────────────────────────────────────────────────
+// Public pilot applications live separately from users/customers. Applying
+// never grants an account, subscription, or Founding Member status.
+export const founding100Leads = mysqlTable("founding100Leads", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 200 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  phone: varchar("phone", { length: 30 }),
+  postalCode: varchar("postalCode", { length: 10 }),
+  message: text("message"),
+  status: mysqlEnum("status", [
+    "new",
+    "contacted",
+    "qualified",
+    "accepted",
+    "rejected",
+  ]).default("new").notNull(),
+  privacyAcceptedAt: timestamp("privacyAcceptedAt").notNull(),
+  contactConsentAt: timestamp("contactConsentAt").notNull(),
+  marketingOptIn: boolean("marketingOptIn").default(false).notNull(),
+  utmSource: varchar("utmSource", { length: 200 }),
+  utmMedium: varchar("utmMedium", { length: 200 }),
+  utmCampaign: varchar("utmCampaign", { length: 200 }),
+  utmTerm: varchar("utmTerm", { length: 200 }),
+  utmContent: varchar("utmContent", { length: 200 }),
+  referrer: text("referrer"),
+  landingPath: varchar("landingPath", { length: 500 }),
+  confirmationEmailSentAt: timestamp("confirmationEmailSentAt"),
+  internalNotificationSentAt: timestamp("internalNotificationSentAt"),
+  notificationError: text("notificationError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Founding100Lead = typeof founding100Leads.$inferSelect;
+export type InsertFounding100Lead = typeof founding100Leads.$inferInsert;

@@ -1,9 +1,11 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // Sender address — uses env var RESEND_FROM if set, otherwise falls back to Resend's test sender
-const FROM = process.env.RESEND_FROM || "MijnComfortabel <onboarding@resend.dev>";
+const FROM =
+  process.env.RESEND_FROM || "MijnComfortabel <onboarding@resend.dev>";
+const PUBLIC_APP_URL = (
+  process.env.PUBLIC_APP_URL || "https://mijncomfortabel.nl"
+).replace(/\/+$/, "");
 
 // ── Generic send helper ────────────────────────────────────────────────────────
 export async function sendEmail({
@@ -16,9 +18,15 @@ export async function sendEmail({
   subject: string;
   html: string;
   text?: string;
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; error?: string; messageId?: string }> {
   try {
-    const { error } = await resend.emails.send({
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      return { success: false, error: "E-mailprovider is niet geconfigureerd." };
+    }
+
+    const resend = new Resend(apiKey);
+    const { data, error } = await resend.emails.send({
       from: FROM,
       to,
       subject,
@@ -29,7 +37,7 @@ export async function sendEmail({
       console.error("[email] Resend error:", error);
       return { success: false, error: error.message };
     }
-    return { success: true };
+    return { success: true, messageId: data?.id };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[email] Unexpected error:", msg);
@@ -69,9 +77,9 @@ function emailWrapper(content: string): string {
             <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 36px;text-align:center;">
               <p style="margin:0;color:#94a3b8;font-size:11px;">
                 © ${new Date().getFullYear()} Comfortabel® — Villa Vali Bouwgroep<br/>
-                <a href="https://mijncomfort-a8mtknzo.manus.space/privacy" style="color:#94a3b8;">Privacyverklaring</a>
+                <a href="${PUBLIC_APP_URL}/privacy" style="color:#94a3b8;">Privacyverklaring</a>
                 &nbsp;·&nbsp;
-                <a href="https://mijncomfort-a8mtknzo.manus.space/algemene-voorwaarden" style="color:#94a3b8;">Algemene Voorwaarden</a>
+                <a href="${PUBLIC_APP_URL}/algemene-voorwaarden" style="color:#94a3b8;">Algemene Voorwaarden</a>
               </p>
             </td>
           </tr>
@@ -273,5 +281,126 @@ export function sendAdminNewUserEmail({
     subject: `Nieuwe registratie: ${userName} — MijnComfortabel`,
     html,
     text: `Nieuwe registratie:\nNaam: ${userName}\nE-mail: ${userEmail}\nTijdstip: ${registeredAt}\n\nMijnComfortabel`,
+  });
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+export function sendFounding100ConfirmationEmail({
+  to,
+  name,
+}: {
+  to: string;
+  name: string;
+}) {
+  const safeName = escapeHtml(name);
+  const html = emailWrapper(`
+    <h2 style="margin:0 0 8px;color:#1E3A5F;font-size:22px;font-weight:700;">Je aanmelding is ontvangen</h2>
+    <p style="margin:0 0 18px;color:#475569;font-size:15px;line-height:1.6;">
+      Hallo ${safeName},<br/><br/>
+      Bedankt voor je aanmelding voor de Founding 100-pilot. We bekijken je aanmelding
+      en nemen persoonlijk contact met je op over de vervolgstappen.
+    </p>
+    <div style="background:#f8fafc;border-left:4px solid #C9A84C;border-radius:8px;padding:16px 18px;margin:22px 0;">
+      <p style="margin:0;color:#1E3A5F;font-size:14px;line-height:1.6;">
+        Deelname aan de pilot is gratis. Je krijgt persoonlijke hulp bij je
+        Woningpaspoort en toegang tot de pilotfunctionaliteiten van MijnComfortabel
+        en MATI.
+      </p>
+    </div>
+    <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6;">
+      Na de pilot bepaal je zelf of je doorgaat. Founding Members die doorgaan,
+      ontvangen levenslang 50% korting op het reguliere digitale basisabonnement voor
+      digitaal preventief woningonderhoud, zolang het abonnement onafgebroken actief is.
+    </p>
+    <p style="margin:0;color:#64748b;font-size:12px;line-height:1.6;">
+      De korting is persoonsgebonden, niet overdraagbaar en blijft bij verhuizing geldig
+      binnen hetzelfde persoonlijke account. Bij beëindiging of langdurige
+      betalingsachterstand vervalt de korting. Fysieke inspecties, onderhoudswerkzaamheden,
+      materialen, spoeddiensten, partnerdiensten en toekomstige premiumproducten vallen
+      niet automatisch onder de korting. Een pilot is bedoeld om samen te testen en
+      verbeteren; functies kunnen wijzigen of tijdelijk niet beschikbaar zijn.
+    </p>
+  `);
+
+  return sendEmail({
+    to,
+    subject: "Je aanmelding voor de Founding 100 is ontvangen",
+    html,
+    text:
+      `Hallo ${name},\n\nJe aanmelding voor de Founding 100-pilot is ontvangen. ` +
+      `We bekijken je aanmelding en nemen persoonlijk contact met je op.\n\n` +
+      `De pilot is gratis. Founding Members die daarna doorgaan ontvangen levenslang ` +
+      `50% korting op het reguliere digitale basisabonnement voor digitaal preventief woningonderhoud, ` +
+      `zolang het abonnement onafgebroken actief is. Fysieke en premiumdiensten vallen buiten de korting.\n\n` +
+      `MijnComfortabel`,
+  });
+}
+
+export function sendFounding100InternalNotificationEmail({
+  to,
+  lead,
+}: {
+  to: string;
+  lead: {
+    name: string;
+    email: string;
+    phone?: string | null;
+    postalCode?: string | null;
+    message?: string | null;
+    utmSource?: string | null;
+    utmMedium?: string | null;
+    utmCampaign?: string | null;
+    submittedAt: string;
+  };
+}) {
+  const row = (label: string, value?: string | null) =>
+    value
+      ? `<tr><td style="padding:7px 0;color:#94a3b8;font-size:13px;width:135px;vertical-align:top;">${label}</td><td style="padding:7px 0;color:#1E3A5F;font-size:14px;">${escapeHtml(value)}</td></tr>`
+      : "";
+
+  const html = emailWrapper(`
+    <h2 style="margin:0 0 8px;color:#1E3A5F;font-size:22px;font-weight:700;">Nieuwe Founding 100-aanmelding</h2>
+    <p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6;">
+      Er staat een nieuwe pilotlead klaar voor persoonlijke opvolging.
+    </p>
+    <table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
+      ${row("Naam", lead.name)}
+      ${row("E-mail", lead.email)}
+      ${row("Telefoon", lead.phone)}
+      ${row("Postcode", lead.postalCode)}
+      ${row("Bericht", lead.message)}
+      ${row("UTM source", lead.utmSource)}
+      ${row("UTM medium", lead.utmMedium)}
+      ${row("UTM campaign", lead.utmCampaign)}
+      ${row("Tijdstip", lead.submittedAt)}
+    </table>
+  `);
+
+  return sendEmail({
+    to,
+    subject: `Nieuwe Founding 100-aanmelding: ${lead.name}`,
+    html,
+    text: [
+      "Nieuwe Founding 100-aanmelding",
+      `Naam: ${lead.name}`,
+      `E-mail: ${lead.email}`,
+      lead.phone ? `Telefoon: ${lead.phone}` : null,
+      lead.postalCode ? `Postcode: ${lead.postalCode}` : null,
+      lead.message ? `Bericht: ${lead.message}` : null,
+      lead.utmSource ? `UTM source: ${lead.utmSource}` : null,
+      lead.utmMedium ? `UTM medium: ${lead.utmMedium}` : null,
+      lead.utmCampaign ? `UTM campaign: ${lead.utmCampaign}` : null,
+      `Tijdstip: ${lead.submittedAt}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
   });
 }

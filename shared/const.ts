@@ -26,6 +26,11 @@ export const SUBSCRIPTION_PRICES: Record<SubscriptionTier, number> = {
   premium: 149,
 };
 
+// Founding 100: the benefit is percentage-based so it follows future changes
+// to the regular Digital price. Eligibility remains a separate business step.
+export const FOUNDING_DISCOUNT_PERCENT = 50;
+export const FOUNDING_CONVERSION_TARGET_PERCENT = 40;
+
 export const SUBSCRIPTION_COLORS: Record<SubscriptionTier, string> = {
   free: "#64748b",
   digital: "#2563eb",
